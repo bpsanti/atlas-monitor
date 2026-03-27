@@ -1,7 +1,7 @@
 package com.atlasmonitor.service;
 
 import com.atlasmonitor.client.AtlasApiClient;
-import com.atlasmonitor.client.dto.AtlasReplicaResource;
+import com.atlasmonitor.client.resource.AtlasReplicaResource;
 import com.atlasmonitor.model.NodeType;
 import com.atlasmonitor.model.PrimaryWindow;
 import lombok.RequiredArgsConstructor;
