@@ -1,8 +1,8 @@
 package com.atlasmonitor.client;
 
-import com.atlasmonitor.client.dto.AtlasDiskWrapperResource;
-import com.atlasmonitor.client.dto.AtlasMetricWrapperResource;
-import com.atlasmonitor.client.dto.AtlasReplicaListResource;
+import com.atlasmonitor.client.resource.AtlasDiskWrapperResource;
+import com.atlasmonitor.client.resource.AtlasMetricWrapperResource;
+import com.atlasmonitor.client.resource.AtlasReplicaWrapperResource;
 import com.atlasmonitor.config.AtlasApiProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,11 +17,11 @@ public class AtlasApiClient {
     private final RestClient atlasRestClient;
     private final AtlasApiProperties props;
 
-    public AtlasReplicaListResource listReplicas() {
+    public AtlasReplicaWrapperResource listReplicas() {
         return atlasRestClient.get()
                 .uri("/groups/{groupId}/processes", props.groupId())
                 .retrieve()
-                .body(AtlasReplicaListResource.class);
+                .body(AtlasReplicaWrapperResource.class);
     }
 
     public AtlasDiskWrapperResource listDisks(String processId) {

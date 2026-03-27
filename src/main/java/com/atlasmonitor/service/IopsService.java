@@ -6,10 +6,10 @@ import com.atlasmonitor.api.dto.IopsQueryResponse.MetricSummary;
 import com.atlasmonitor.api.dto.IopsQueryResponse.PeakPoint;
 import com.atlasmonitor.api.dto.ProcessInfo;
 import com.atlasmonitor.client.AtlasApiClient;
-import com.atlasmonitor.client.dto.AtlasDataPointResource;
-import com.atlasmonitor.client.dto.AtlasMetricResourceResource;
-import com.atlasmonitor.client.dto.AtlasMetricResourceWrapperResource;
-import com.atlasmonitor.client.dto.AtlasReplicaResource;
+import com.atlasmonitor.client.resource.AtlasDataPointResource;
+import com.atlasmonitor.client.resource.AtlasMetricResource;
+import com.atlasmonitor.client.resource.AtlasMetricWrapperResource;
+import com.atlasmonitor.client.resource.AtlasReplicaResource;
 import com.atlasmonitor.model.NodeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -92,7 +92,7 @@ public class IopsService {
             Instant end
     ) {
         String partitionName = resolvePartitionName(processId);
-        AtlasMetricResourceWrapperResource raw = atlasApiClient.getDiskIops(processId, partitionName, granularity, start, end);
+        AtlasMetricWrapperResource raw = atlasApiClient.getDiskIops(processId, partitionName, granularity, start, end);
 
         Map<String, AtlasMetricResource> byName = raw.measurements().stream()
                 .collect(Collectors.toMap(AtlasMetricResource::name, m -> m));
