@@ -1,6 +1,6 @@
 package com.atlasmonitor.api.dto;
 
-import com.atlasmonitor.client.dto.DataPointDto;
+import com.atlasmonitor.client.resource.AtlasDataPointResource;
 
 import java.time.Instant;
 import java.util.List;
@@ -22,7 +22,7 @@ public record IopsQueryResponse(
 ) {
 
     public record MetricSummary(
-            List<DataPointDto> dataPoints,
+            List<AtlasDataPointResource> dataPoints,
             PeakPoint peak
     ) {}
 

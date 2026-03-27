@@ -1,11 +1,11 @@
-package com.atlasmonitor.client.dto;
+package com.atlasmonitor.client.resource;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record DiskListResponse(
-        List<DiskDto> results,
+public record AtlasDiskWrapperResource(
+        List<AtlasDiskResource> results,
         int totalCount
 ) {}

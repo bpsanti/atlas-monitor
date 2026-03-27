@@ -1,4 +1,4 @@
-package com.atlasmonitor.client.dto;
+package com.atlasmonitor.client.resource;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

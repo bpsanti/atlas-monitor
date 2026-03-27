@@ -1,12 +1,12 @@
-package com.atlasmonitor.client.dto;
+package com.atlasmonitor.client.resource;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record MeasurementDto(
+public record AtlasMetricResource(
         String name,
         String units,
-        List<DataPointDto> dataPoints
+        List<AtlasDataPointResource> dataPoints
 ) {}

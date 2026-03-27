@@ -6,9 +6,9 @@ import com.atlasmonitor.api.dto.IopsQueryResponse.MetricSummary;
 import com.atlasmonitor.api.dto.IopsQueryResponse.PeakPoint;
 import com.atlasmonitor.api.dto.ProcessInfo;
 import com.atlasmonitor.client.AtlasApiClient;
-import com.atlasmonitor.client.dto.DataPointDto;
-import com.atlasmonitor.client.dto.MeasurementDto;
-import com.atlasmonitor.client.dto.MeasurementsResponse;
+import com.atlasmonitor.client.dto.AtlasDataPointResource;
+import com.atlasmonitor.client.dto.AtlasMetricResourceResource;
+import com.atlasmonitor.client.dto.AtlasMetricResourceWrapperResource;
 import com.atlasmonitor.client.dto.AtlasReplicaResource;
 import com.atlasmonitor.model.NodeType;
 import lombok.RequiredArgsConstructor;
@@ -92,10 +92,10 @@ public class IopsService {
             Instant end
     ) {
         String partitionName = resolvePartitionName(processId);
-        MeasurementsResponse raw = atlasApiClient.getDiskIops(processId, partitionName, granularity, start, end);
+        AtlasMetricResourceWrapperResource raw = atlasApiClient.getDiskIops(processId, partitionName, granularity, start, end);
 
-        Map<String, MeasurementDto> byName = raw.measurements().stream()
-                .collect(Collectors.toMap(MeasurementDto::name, m -> m));
+        Map<String, AtlasMetricResource> byName = raw.measurements().stream()
+                .collect(Collectors.toMap(AtlasMetricResource::name, m -> m));
 
         return new IopsQueryResponse(
                 processId,
@@ -136,12 +136,12 @@ public class IopsService {
         return summary != null ? summary.peak() : null;
     }
 
-    private MetricSummary summarize(MeasurementDto measurement) {
+    private MetricSummary summarize(AtlasMetricResource measurement) {
         if (measurement == null) {
             return null;
         }
 
-        List<DataPointDto> nonNull = measurement.dataPoints().stream()
+        List<AtlasDataPointResource> nonNull = measurement.dataPoints().stream()
                 .filter(dp -> dp.value() != null)
                 .toList();
 
@@ -149,8 +149,8 @@ public class IopsService {
             return new MetricSummary(measurement.dataPoints(), null);
         }
 
-        DataPointDto peak = nonNull.stream()
-                .max(Comparator.comparingDouble(DataPointDto::value))
+        AtlasDataPointResource peak = nonNull.stream()
+                .max(Comparator.comparingDouble(AtlasDataPointResource::value))
                 .orElseThrow();
 
         return new MetricSummary(

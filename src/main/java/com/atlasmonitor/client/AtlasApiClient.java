@@ -1,7 +1,7 @@
 package com.atlasmonitor.client;
 
-import com.atlasmonitor.client.dto.DiskListResponse;
-import com.atlasmonitor.client.dto.MeasurementsResponse;
+import com.atlasmonitor.client.dto.AtlasDiskWrapperResource;
+import com.atlasmonitor.client.dto.AtlasMetricWrapperResource;
 import com.atlasmonitor.client.dto.AtlasReplicaListResource;
 import com.atlasmonitor.config.AtlasApiProperties;
 import lombok.RequiredArgsConstructor;
@@ -24,20 +24,20 @@ public class AtlasApiClient {
                 .body(AtlasReplicaListResource.class);
     }
 
-    public DiskListResponse listDisks(String processId) {
+    public AtlasDiskWrapperResource listDisks(String processId) {
         // processId contains ":" (e.g. host:27017) — build the path as a plain string
         // so Spring does NOT apply URI template encoding (%3A) to it.
         String path = "/groups/" + props.groupId() + "/processes/" + processId + "/disks";
         return atlasRestClient.get()
                 .uri(path)
                 .retrieve()
-                .body(DiskListResponse.class);
+                .body(AtlasDiskWrapperResource.class);
     }
 
     /**
      * Fetches disk partition IOPS measurements from Atlas.
      */
-    public MeasurementsResponse getDiskIops(
+    public AtlasMetricWrapperResource getDiskIops(
             String processId,
             String partitionName,
             String granularity,
@@ -63,7 +63,7 @@ public class AtlasApiClient {
                                 "MAX_DISK_PARTITION_IOPS_TOTAL")
                         .build())
                 .retrieve()
-                .body(MeasurementsResponse.class);
+                .body(AtlasMetricWrapperResource.class);
     }
 
     /**
@@ -71,7 +71,7 @@ public class AtlasApiClient {
      * Used to identify which node was acting as primary during a given window —
      * only the primary receives real client writes.
      */
-    public MeasurementsResponse getWriteOpcounters(
+    public AtlasMetricWrapperResource getWriteOpcounters(
             String processId,
             String granularity,
             Instant start,
@@ -89,6 +89,6 @@ public class AtlasApiClient {
                         .queryParam("m", "OPCOUNTER_INSERT")
                         .build())
                 .retrieve()
-                .body(MeasurementsResponse.class);
+                .body(AtlasMetricWrapperResource.class);
     }
 }
