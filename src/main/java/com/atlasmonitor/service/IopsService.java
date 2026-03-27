@@ -9,7 +9,7 @@ import com.atlasmonitor.client.AtlasApiClient;
 import com.atlasmonitor.client.dto.DataPointDto;
 import com.atlasmonitor.client.dto.MeasurementDto;
 import com.atlasmonitor.client.dto.MeasurementsResponse;
-import com.atlasmonitor.client.dto.ProcessDto;
+import com.atlasmonitor.client.dto.AtlasReplicaResource;
 import com.atlasmonitor.model.NodeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,10 +26,10 @@ import java.util.stream.Collectors;
 public class IopsService {
 
     private final AtlasApiClient atlasApiClient;
-    private final PrimaryResolutionService primaryResolutionService;
+    private final PrimaryReplicaResolutionService primaryResolutionService;
 
     public List<ProcessInfo> listProcesses() {
-        return atlasApiClient.listProcesses().results().stream()
+        return atlasApiClient.listReplicas().results().stream()
                 .map(p -> new ProcessInfo(p.id(), p.hostname(), p.port(), p.typeName(), p.replicaSetName()))
                 .toList();
     }
@@ -114,8 +114,8 @@ public class IopsService {
         );
     }
 
-    private List<ProcessDto> resolveProcesses(NodeType nodeType) {
-        List<ProcessDto> matches = atlasApiClient.listProcesses().results().stream()
+    private List<AtlasReplicaResource> resolveProcesses(NodeType nodeType) {
+        List<AtlasReplicaResource> matches = atlasApiClient.listReplicas().results().stream()
                 .filter(p -> nodeType.matches(p.typeName()))
                 .toList();
         if (matches.isEmpty()) {

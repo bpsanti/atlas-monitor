@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ProcessListResponse(
-        List<ProcessDto> results,
+public record AtlasReplicaListResource(
+        List<AtlasReplicaResource> results,
         int totalCount
 ) {}

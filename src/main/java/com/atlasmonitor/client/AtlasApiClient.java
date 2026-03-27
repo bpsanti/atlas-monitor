@@ -2,7 +2,7 @@ package com.atlasmonitor.client;
 
 import com.atlasmonitor.client.dto.DiskListResponse;
 import com.atlasmonitor.client.dto.MeasurementsResponse;
-import com.atlasmonitor.client.dto.ProcessListResponse;
+import com.atlasmonitor.client.dto.AtlasReplicaListResource;
 import com.atlasmonitor.config.AtlasApiProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,11 +17,11 @@ public class AtlasApiClient {
     private final RestClient atlasRestClient;
     private final AtlasApiProperties props;
 
-    public ProcessListResponse listProcesses() {
+    public AtlasReplicaListResource listReplicas() {
         return atlasRestClient.get()
                 .uri("/groups/{groupId}/processes", props.groupId())
                 .retrieve()
-                .body(ProcessListResponse.class);
+                .body(AtlasReplicaListResource.class);
     }
 
     public DiskListResponse listDisks(String processId) {

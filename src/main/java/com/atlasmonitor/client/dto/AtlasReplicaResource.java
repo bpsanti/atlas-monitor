@@ -3,7 +3,7 @@ package com.atlasmonitor.client.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ProcessDto(
+public record AtlasReplicaResource(
         String id,
         String hostname,
         int port,
