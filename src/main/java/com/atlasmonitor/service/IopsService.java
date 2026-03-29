@@ -10,7 +10,6 @@ import com.atlasmonitor.client.resource.AtlasDataPointResource;
 import com.atlasmonitor.client.resource.AtlasMetricResource;
 import com.atlasmonitor.client.resource.AtlasMetricWrapperResource;
 import com.atlasmonitor.client.resource.AtlasReplicaResource;
-import com.atlasmonitor.model.NodeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -41,46 +40,110 @@ public class IopsService {
     }
 
     public List<IopsQueryResponse> queryIops(
-            NodeType nodeType,
             String granularity,
             Instant start,
             Instant end
     ) {
-        if (nodeType == NodeType.PRIMARY) {
-            return primaryResolutionService.resolvePrimaryWindows(granularity, start, end).stream()
-                    .map(w -> queryIopsForNode(w.processId(), w.hostname(), "REPLICA_PRIMARY",
-                            granularity, w.from(), w.until()))
-                    .toList();
-        }
-
-        return resolveProcesses(nodeType).stream()
+        return atlasApiClient.listReplicas().results().stream()
                 .map(p -> queryIopsForNode(p.id(), p.hostname(), p.typeName(), granularity, start, end))
                 .toList();
     }
 
-    public List<IopsPeakResponse> queryIopsPeaks(
-            NodeType nodeType,
+    public IopsQueryResponse queryPrimaryIops(
             String granularity,
             Instant start,
             Instant end
     ) {
-        return queryIops(nodeType, granularity, start, end).stream()
-                .map(full -> new IopsPeakResponse(
-                        full.processId(),
-                        full.hostname(),
-                        full.currentRole(),
-                        full.partitionName(),
-                        full.granularity(),
-                        full.start(),
-                        full.end(),
-                        peakOf(full.read()),
-                        peakOf(full.write()),
-                        peakOf(full.total()),
-                        peakOf(full.maxRead()),
-                        peakOf(full.maxWrite()),
-                        peakOf(full.maxTotal())
-                ))
+        List<IopsQueryResponse> windows = primaryResolutionService.resolvePrimaryWindows(granularity, start, end)
+                .stream()
+                .map(w -> queryIopsForNode(w.processId(), w.hostname(), "REPLICA_PRIMARY",
+                        granularity, w.from(), w.until()))
                 .toList();
+
+        if (windows.isEmpty()) {
+            throw new NoSuchElementException("No primary windows found for the given time range");
+        }
+        if (windows.size() == 1) {
+            return windows.get(0);
+        }
+        return mergeWindows(windows, granularity, start, end);
+    }
+
+    public IopsPeakResponse queryPrimaryIopsPeak(
+            String granularity,
+            Instant start,
+            Instant end
+    ) {
+        IopsQueryResponse full = queryPrimaryIops(granularity, start, end);
+        return new IopsPeakResponse(
+                full.processId(),
+                full.hostname(),
+                full.currentRole(),
+                full.partitionName(),
+                full.granularity(),
+                full.start(),
+                full.end(),
+                peakOf(full.read()),
+                peakOf(full.write()),
+                peakOf(full.total()),
+                peakOf(full.maxRead()),
+                peakOf(full.maxWrite()),
+                peakOf(full.maxTotal())
+        );
+    }
+
+    private IopsQueryResponse mergeWindows(
+            List<IopsQueryResponse> windows,
+            String granularity,
+            Instant start,
+            Instant end
+    ) {
+        String processIds = windows.stream().map(IopsQueryResponse::processId).distinct()
+                .collect(Collectors.joining(", "));
+        String hostnames = windows.stream().map(IopsQueryResponse::hostname).distinct()
+                .collect(Collectors.joining(", "));
+
+        List<Instant> roleChanges = windows.stream().skip(1).map(IopsQueryResponse::start).toList();
+
+        return new IopsQueryResponse(
+                processIds,
+                hostnames,
+                "REPLICA_PRIMARY",
+                windows.get(0).partitionName(),
+                granularity,
+                start,
+                end,
+                roleChanges,
+                mergeMetrics(windows.stream().map(IopsQueryResponse::read).toList()),
+                mergeMetrics(windows.stream().map(IopsQueryResponse::write).toList()),
+                mergeMetrics(windows.stream().map(IopsQueryResponse::total).toList()),
+                mergeMetrics(windows.stream().map(IopsQueryResponse::maxRead).toList()),
+                mergeMetrics(windows.stream().map(IopsQueryResponse::maxWrite).toList()),
+                mergeMetrics(windows.stream().map(IopsQueryResponse::maxTotal).toList())
+        );
+    }
+
+    private MetricSummary mergeMetrics(List<MetricSummary> summaries) {
+        List<AtlasDataPointResource> allPoints = summaries.stream()
+                .filter(s -> s != null)
+                .flatMap(s -> s.dataPoints().stream())
+                .sorted(Comparator.comparing(AtlasDataPointResource::timestamp,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        List<AtlasDataPointResource> nonNull = allPoints.stream()
+                .filter(dp -> dp.value() != null)
+                .toList();
+
+        if (nonNull.isEmpty()) {
+            return new MetricSummary(allPoints, null);
+        }
+
+        AtlasDataPointResource peak = nonNull.stream()
+                .max(Comparator.comparingDouble(AtlasDataPointResource::value))
+                .orElseThrow();
+
+        return new MetricSummary(allPoints, new PeakPoint(peak.timestamp(), peak.value()));
     }
 
     private IopsQueryResponse queryIopsForNode(
@@ -105,6 +168,7 @@ public class IopsService {
                 granularity,
                 raw.start(),
                 raw.end(),
+                List.of(),
                 summarize(byName.get("DISK_PARTITION_IOPS_READ")),
                 summarize(byName.get("DISK_PARTITION_IOPS_WRITE")),
                 summarize(byName.get("DISK_PARTITION_IOPS_TOTAL")),
@@ -112,16 +176,6 @@ public class IopsService {
                 summarize(byName.get("MAX_DISK_PARTITION_IOPS_WRITE")),
                 summarize(byName.get("MAX_DISK_PARTITION_IOPS_TOTAL"))
         );
-    }
-
-    private List<AtlasReplicaResource> resolveProcesses(NodeType nodeType) {
-        List<AtlasReplicaResource> matches = atlasApiClient.listReplicas().results().stream()
-                .filter(p -> nodeType.matches(p.typeName()))
-                .toList();
-        if (matches.isEmpty()) {
-            throw new NoSuchElementException("No processes found with node type: " + nodeType);
-        }
-        return matches;
     }
 
     private String resolvePartitionName(String processId) {

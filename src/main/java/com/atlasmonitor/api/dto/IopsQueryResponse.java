@@ -13,6 +13,7 @@ public record IopsQueryResponse(
         String granularity,
         Instant start,
         Instant end,
+        List<Instant> roleChanges,
         MetricSummary read,
         MetricSummary write,
         MetricSummary total,

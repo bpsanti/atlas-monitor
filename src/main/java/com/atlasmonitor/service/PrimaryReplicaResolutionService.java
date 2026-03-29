@@ -2,7 +2,6 @@ package com.atlasmonitor.service;
 
 import com.atlasmonitor.client.AtlasApiClient;
 import com.atlasmonitor.client.resource.AtlasReplicaResource;
-import com.atlasmonitor.model.NodeType;
 import com.atlasmonitor.model.PrimaryWindow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,7 +42,7 @@ public class PrimaryReplicaResolutionService {
 
         if (primaryWindows.isEmpty()) {
             primaryWindows = replicas.stream()
-                .filter(p -> NodeType.PRIMARY.matches(p.typeName()))
+                .filter(p -> p.typeName() != null && p.typeName().contains("PRIMARY"))
                 .map(p -> new PrimaryWindow(p.id(), p.hostname(), start, end))
                 .toList();
         }
