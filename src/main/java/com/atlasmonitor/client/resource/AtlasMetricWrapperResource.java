@@ -7,11 +7,11 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AtlasMetricWrapperResource(
-        String groupId,
-        String processId,
-        String partitionName,
-        String granularity,
-        Instant start,
-        Instant end,
-        List<AtlasMetricResource> measurements
+    String groupId,
+    String processId,
+    String partitionName,
+    String granularity,
+    Instant start,
+    Instant end,
+    List<AtlasMetricResource> measurements
 ) {}

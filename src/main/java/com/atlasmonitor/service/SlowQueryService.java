@@ -21,26 +21,26 @@ public class SlowQueryService {
     private final ObjectMapper objectMapper;
 
     public List<SlowQueryResponse> getSlowQueries(
-            Instant since,
-            Long durationMs,
-            Long minDurationMillis,
-            Integer nLogs
+        Instant since,
+        Long durationMs,
+        Long minDurationMillis,
+        Integer nLogs
     ) {
         String primaryProcessId = resolvePrimaryProcessId();
         Long sinceEpoch = since != null ? since.toEpochMilli() : null;
 
         AtlasSlowQueryWrapperResource response = atlasApiClient.getSlowQueryLogs(
-                primaryProcessId, sinceEpoch, durationMs, nLogs);
+            primaryProcessId, sinceEpoch, durationMs, nLogs);
 
         List<AtlasSlowQueryResource> queries = response.slowQueries();
         if (queries == null) {
             return List.of();
         }
 
-         return queries.stream()
-                .map(this::parseLine)
-                .filter(q -> minDurationMillis == null || q.durationMillis() >= minDurationMillis)
-                .toList();
+        return queries.stream()
+            .map(this::parseLine)
+            .filter(q -> minDurationMillis == null || q.durationMillis() >= minDurationMillis)
+            .toList();
     }
 
     private SlowQueryResponse parseLine(AtlasSlowQueryResource slowQuery) {
@@ -67,11 +67,11 @@ public class SlowQueryService {
             String filter = filterNode.isMissingNode() ? null : filterNode.toPrettyString();
 
             return new SlowQueryResponse(date, type, namespace, durationMillis,
-                    planSummary, keysExamined, docsExamined, nreturned,
-                    remote, cursorExhausted, filter);
+                planSummary, keysExamined, docsExamined, nreturned,
+                remote, cursorExhausted, filter);
         } catch (Exception e) {
             return new SlowQueryResponse(null, null, slowQuery.namespace(), 0,
-                    null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         }
     }
 
@@ -92,9 +92,9 @@ public class SlowQueryService {
 
     private String resolvePrimaryProcessId() {
         return atlasApiClient.listReplicas().results().stream()
-                .filter(r -> r.typeName() != null && r.typeName().contains("PRIMARY"))
-                .map(r -> r.id())
-                .findFirst()
-                .orElseThrow(() -> new NoSuchElementException("No primary replica found"));
+            .filter(r -> r.typeName() != null && r.typeName().contains("PRIMARY"))
+            .map(r -> r.id())
+            .findFirst()
+            .orElseThrow(() -> new NoSuchElementException("No primary replica found"));
     }
 }

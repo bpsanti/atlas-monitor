@@ -19,12 +19,12 @@ public class SlowQueryAnalysisService {
             and must analyze its efficiency. Focus on:
 
             1. **Index Usage**: Based on the planSummary, determine if an appropriate index is being used. \
-               Flag COLLSCAN as critical. For IXSCAN, evaluate if the index covers the query fields.
+              Flag COLLSCAN as critical. For IXSCAN, evaluate if the index covers the query fields.
             2. **Efficiency Ratios**:
-               - keysExamined vs nreturned: ideally close to 1:1. High ratio means the index is not selective enough.
-               - docsExamined vs nreturned: ideally close to 1:1. High ratio means too many documents are being scanned.
+              - keysExamined vs nreturned: ideally close to 1:1. High ratio means the index is not selective enough.
+              - docsExamined vs nreturned: ideally close to 1:1. High ratio means too many documents are being scanned.
             3. **Filter/Pipeline Analysis**: Examine the filter or aggregation pipeline for optimization opportunities \
-               (e.g., missing indexes on filter fields, unselective leading fields, unnecessary stages).
+              (e.g., missing indexes on filter fields, unselective leading fields, unnecessary stages).
             4. **Actionable Recommendations**: Suggest specific index creation commands or query rewrites.
 
             Be concise and practical. Use markdown formatting. \

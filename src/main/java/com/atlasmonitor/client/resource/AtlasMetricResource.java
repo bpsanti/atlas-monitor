@@ -6,7 +6,7 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AtlasMetricResource(
-        String name,
-        String units,
-        List<AtlasDataPointResource> dataPoints
+    String name,
+    String units,
+    List<AtlasDataPointResource> dataPoints
 ) {}

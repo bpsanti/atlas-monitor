@@ -6,6 +6,6 @@ import java.time.Instant;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AtlasDataPointResource(
-        Instant timestamp,
-        Double value        // nullable — Atlas sends null for gaps
+    Instant timestamp,
+    Double value        // nullable — Atlas sends null for gaps
 ) {}

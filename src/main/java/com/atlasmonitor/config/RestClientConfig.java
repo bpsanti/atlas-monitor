@@ -17,19 +17,19 @@ public class RestClientConfig {
     public RestClient atlasRestClient(AtlasApiProperties props) {
         BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(
-                new AuthScope(null, -1),
-                new UsernamePasswordCredentials(props.publicKey(), props.privateKey().toCharArray())
+            new AuthScope(null, -1),
+            new UsernamePasswordCredentials(props.publicKey(), props.privateKey().toCharArray())
         );
 
         CloseableHttpClient httpClient = HttpClients.custom()
-                .setDefaultCredentialsProvider(credentialsProvider)
-                .build();
+            .setDefaultCredentialsProvider(credentialsProvider)
+            .build();
 
         return RestClient.builder()
-                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
-                .baseUrl(props.baseUrl())
-                .defaultHeader("Accept", "application/vnd.atlas.2023-01-01+json")
-                .defaultHeader("Content-Type", "application/json")
-                .build();
+            .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
+            .baseUrl(props.baseUrl())
+            .defaultHeader("Accept", "application/vnd.atlas.2023-01-01+json")
+            .defaultHeader("Content-Type", "application/json")
+            .build();
     }
 }

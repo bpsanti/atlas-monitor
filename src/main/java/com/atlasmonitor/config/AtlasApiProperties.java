@@ -7,8 +7,8 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "atlas")
 public record AtlasApiProperties(
-        @NotBlank String baseUrl,
-        @NotBlank String publicKey,
-        @NotBlank String privateKey,
-        @NotBlank String groupId
+    @NotBlank String baseUrl,
+    @NotBlank String publicKey,
+    @NotBlank String privateKey,
+    @NotBlank String groupId
 ) {}

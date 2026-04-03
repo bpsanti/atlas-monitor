@@ -21,10 +21,10 @@ public class SlowQueryController {
 
     @GetMapping("/slow-queries")
     public List<SlowQueryResponse> getSlowQueries(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant since,
-            @RequestParam(required = false) Long durationMs,
-            @RequestParam(required = false) Long minDurationMillis,
-            @RequestParam(required = false) Integer nLogs
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant since,
+        @RequestParam(required = false) Long durationMs,
+        @RequestParam(required = false) Long minDurationMillis,
+        @RequestParam(required = false) Integer nLogs
     ) {
         return slowQueryService.getSlowQueries(since, durationMs, minDurationMillis, nLogs);
     }

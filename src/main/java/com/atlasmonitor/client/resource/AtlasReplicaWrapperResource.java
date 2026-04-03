@@ -6,6 +6,6 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AtlasReplicaWrapperResource(
-        List<AtlasReplicaResource> results,
-        int totalCount
+    List<AtlasReplicaResource> results,
+    int totalCount
 ) {}

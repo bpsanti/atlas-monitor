@@ -6,6 +6,6 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AtlasDiskWrapperResource(
-        List<AtlasDiskResource> results,
-        int totalCount
+    List<AtlasDiskResource> results,
+    int totalCount
 ) {}
