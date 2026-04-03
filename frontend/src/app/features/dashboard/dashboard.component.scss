@@ -230,6 +230,19 @@ button[type='submit'] {
   height: 260px;
   padding: 1rem 1.25rem 0.5rem;
   position: relative;
+
+  &.clickable {
+    cursor: crosshair;
+  }
+}
+
+.hint {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: $text-secondary;
+  text-transform: none;
+  letter-spacing: normal;
+  margin-left: 0.5rem;
 }
 
 // ── Peak row ──────────────────────────────────────────────────────────────────

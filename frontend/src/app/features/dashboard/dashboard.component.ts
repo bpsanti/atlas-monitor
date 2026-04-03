@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { BaseChartDirective } from 'ng2-charts';
-import { ChartData, ChartOptions, Plugin } from 'chart.js';
+import { ChartData, ChartOptions, ChartEvent, ActiveElement, Plugin } from 'chart.js';
 import {
   Chart,
   LineController,
@@ -48,6 +49,7 @@ interface NodeCard {
 export class DashboardComponent implements OnInit {
   private readonly iopsService = inject(IopsService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly router = inject(Router);
 
   granularities: Granularity[] = ['PT1M', 'PT5M', 'PT1H', 'P1D'];
   selectedGranularity: Granularity = 'PT1H';
@@ -179,6 +181,20 @@ export class DashboardComponent implements OnInit {
       animation: false,
       responsive: true,
       maintainAspectRatio: false,
+      onClick: (_event: ChartEvent, _elements: ActiveElement[], chart: Chart) => {
+        const xScale = chart.scales['x'];
+        if (!xScale || !(_event.native instanceof MouseEvent)) return;
+        const rect = chart.canvas.getBoundingClientRect();
+        const xPixel = (_event.native as MouseEvent).clientX - rect.left;
+        const timestamp = xScale.getValueForPixel(xPixel);
+        if (timestamp == null) return;
+        const clicked = new Date(timestamp);
+        const start = new Date(clicked.getTime() - 3600_000);
+        const end = new Date(clicked.getTime() + 3600_000);
+        this.router.navigate(['/slow-queries'], {
+          queryParams: { start: start.toISOString(), end: end.toISOString() },
+        });
+      },
       plugins: {
         legend: {
           position: 'top',

@@ -3,6 +3,7 @@ package com.atlasmonitor.client;
 import com.atlasmonitor.client.resource.AtlasDiskWrapperResource;
 import com.atlasmonitor.client.resource.AtlasMetricWrapperResource;
 import com.atlasmonitor.client.resource.AtlasReplicaWrapperResource;
+import com.atlasmonitor.client.resource.AtlasSlowQueryWrapperResource;
 import com.atlasmonitor.config.AtlasApiProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -90,5 +91,36 @@ public class AtlasApiClient {
                         .build())
                 .retrieve()
                 .body(AtlasMetricWrapperResource.class);
+    }
+
+    public AtlasSlowQueryWrapperResource getSlowQueryLogs(
+            String processId,
+            Long since,
+            Long duration,
+            Integer nLogs
+    ) {
+        String basePath = "/groups/" + props.groupId()
+                + "/processes/" + processId
+                + "/performanceAdvisor/slowQueryLogs";
+
+        return atlasRestClient.get()
+                .uri(b -> {
+                    b.path(basePath)
+                            .queryParam("includeMetrics", true)
+                            .queryParam("includeReplicaState", true)
+                            .queryParam("includeOpType", true);
+                    if (since != null) {
+                        b.queryParam("since", since);
+                    }
+                    if (duration != null) {
+                        b.queryParam("duration", duration);
+                    }
+                    if (nLogs != null) {
+                        b.queryParam("nLogs", nLogs);
+                    }
+                    return b.build();
+                })
+                .retrieve()
+                .body(AtlasSlowQueryWrapperResource.class);
     }
 }
