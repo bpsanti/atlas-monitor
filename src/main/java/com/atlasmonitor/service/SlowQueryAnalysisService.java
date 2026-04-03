@@ -34,19 +34,19 @@ public class SlowQueryAnalysisService {
         String userMessage = buildUserMessage(query);
 
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(Model.CLAUDE_SONNET_4_6)
-                .maxTokens(2048L)
-                .system(SYSTEM_PROMPT)
-                .addUserMessage(userMessage)
-                .build();
+            .model(Model.CLAUDE_SONNET_4_6)
+            .maxTokens(2048L)
+            .system(SYSTEM_PROMPT)
+            .addUserMessage(userMessage)
+            .build();
 
         Message response = anthropicClient.messages().create(params);
 
         return response.content().stream()
-                .flatMap(block -> block.text().stream())
-                .map(textBlock -> textBlock.text())
-                .findFirst()
-                .orElse("No analysis available.");
+            .flatMap(block -> block.text().stream())
+            .map(textBlock -> textBlock.text())
+            .findFirst()
+            .orElse("No analysis available.");
     }
 
     private String buildUserMessage(SlowQueryResponse query) {
