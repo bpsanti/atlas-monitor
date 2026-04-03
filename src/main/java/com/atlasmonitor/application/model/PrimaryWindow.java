@@ -1,4 +1,4 @@
-package com.atlasmonitor.model;
+package com.atlasmonitor.application.model;
 
 import java.time.Instant;
 

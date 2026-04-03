@@ -1,8 +1,9 @@
-package com.atlasmonitor.service;
+package com.atlasmonitor.application;
 
 import com.atlasmonitor.client.AtlasApiClient;
+import com.atlasmonitor.client.resource.AtlasMetricResource;
 import com.atlasmonitor.client.resource.AtlasReplicaResource;
-import com.atlasmonitor.model.PrimaryWindow;
+import com.atlasmonitor.application.model.PrimaryWindow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

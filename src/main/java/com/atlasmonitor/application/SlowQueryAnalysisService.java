@@ -1,10 +1,10 @@
-package com.atlasmonitor.service;
+package com.atlasmonitor.application;
 
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
-import com.atlasmonitor.api.dto.SlowQueryResponse;
+import com.atlasmonitor.application.model.SlowQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +30,7 @@ public class SlowQueryAnalysisService {
             Be concise and practical. Use markdown formatting. \
             If the query looks efficient, say so briefly.""";
 
-    public String analyze(SlowQueryResponse query) {
+    public String analyze(SlowQuery query) {
         String userMessage = buildUserMessage(query);
 
         MessageCreateParams params = MessageCreateParams.builder()
@@ -49,7 +49,7 @@ public class SlowQueryAnalysisService {
             .orElse("No analysis available.");
     }
 
-    private String buildUserMessage(SlowQueryResponse query) {
+    private String buildUserMessage(SlowQuery query) {
         StringBuilder sb = new StringBuilder();
         sb.append("## Slow Query Details\n\n");
         sb.append("- **Namespace**: ").append(query.namespace()).append("\n");
@@ -67,6 +67,21 @@ public class SlowQueryAnalysisService {
         }
         if (query.nreturned() != null) {
             sb.append("- **Documents Returned**: ").append(query.nreturned()).append("\n");
+        }
+        if (query.docsExaminedReturnedRatio() != null) {
+            sb.append("- **Docs Examined/Returned Ratio**: ").append(query.docsExaminedReturnedRatio()).append("\n");
+        }
+        if (query.keysExaminedReturnedRatio() != null) {
+            sb.append("- **Keys Examined/Returned Ratio**: ").append(query.keysExaminedReturnedRatio()).append("\n");
+        }
+        if (query.hasIndexCoverage() != null) {
+            sb.append("- **Has Index Coverage**: ").append(query.hasIndexCoverage()).append("\n");
+        }
+        if (query.hasSort() != null) {
+            sb.append("- **Has Sort**: ").append(query.hasSort()).append("\n");
+        }
+        if (query.numYields() != null) {
+            sb.append("- **Num Yields**: ").append(query.numYields()).append("\n");
         }
         if (query.cursorExhausted() != null) {
             sb.append("- **Cursor Exhausted**: ").append(query.cursorExhausted()).append("\n");

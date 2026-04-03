@@ -1,6 +1,6 @@
-package com.atlasmonitor.api.dto;
+package com.atlasmonitor.application.model;
 
-public record ProcessInfo(
+public record ProcessNode(
     String id,
     String hostname,
     int port,

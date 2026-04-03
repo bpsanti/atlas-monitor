@@ -1,10 +1,11 @@
 package com.atlasmonitor.api;
 
-import com.atlasmonitor.api.dto.IopsPeakResponse;
-import com.atlasmonitor.api.dto.IopsQueryResponse;
-import com.atlasmonitor.api.dto.ProcessInfo;
-import com.atlasmonitor.service.IopsService;
+import com.atlasmonitor.api.resource.IopsMetricsResource;
+import com.atlasmonitor.api.resource.IopsPeakResource;
+import com.atlasmonitor.api.resource.ProcessNodeResource;
+import com.atlasmonitor.application.IopsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.convert.ConversionService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,69 +18,50 @@ import java.util.List;
 public class IopsController {
 
     private final IopsService iopsService;
+    private final ConversionService conversionService;
 
-    /**
-    * List all processes (hosts) in the configured Atlas project.
-    */
     @GetMapping("/processes")
-    public List<ProcessInfo> listProcesses() {
-        return iopsService.listProcesses();
+    public List<ProcessNodeResource> listProcesses() {
+        return iopsService.listProcesses().stream()
+            .map(p -> conversionService.convert(p, ProcessNodeResource.class))
+            .toList();
     }
 
-    /**
-    * List disk partitions available for a given process.
-    */
     @GetMapping("/processes/{processId}/disks")
     public List<String> listDisks(@PathVariable String processId) {
         return iopsService.listDisks(processId);
     }
 
-    /**
-    * Query IOPS metrics for all instances in the time window.
-    *
-    * @param granularity ISO 8601 duration: PT1M, PT5M, PT1H, P1D
-    * @param start       Start of time window (ISO 8601)
-    * @param end         End of time window (ISO 8601)
-    */
     @GetMapping("/iops")
-    public List<IopsQueryResponse> queryIops(
+    public List<IopsMetricsResource> queryIops(
         @RequestParam(defaultValue = "PT1H") String granularity,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end
     ) {
-        return iopsService.queryIops(granularity, start, end);
+        return iopsService.queryIops(granularity, start, end).stream()
+            .map(m -> conversionService.convert(m, IopsMetricsResource.class))
+            .toList();
     }
 
-    /**
-    * Query IOPS metrics for the PRIMARY node only.
-    * Handles failover: returns one entry per primary window when a role change occurred.
-    *
-    * @param granularity ISO 8601 duration: PT1M, PT5M, PT1H, P1D
-    * @param start       Start of time window (ISO 8601)
-    * @param end         End of time window (ISO 8601)
-    */
     @GetMapping("/iops/primary")
-    public IopsQueryResponse queryPrimaryIops(
+    public IopsMetricsResource queryPrimaryIops(
         @RequestParam(defaultValue = "PT1H") String granularity,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end
     ) {
-        return iopsService.queryPrimaryIops(granularity, start, end);
+        return conversionService.convert(
+            iopsService.queryPrimaryIops(granularity, start, end),
+            IopsMetricsResource.class);
     }
 
-    /**
-    * Returns only the peak value for each IOPS metric on the PRIMARY node (no time-series data).
-    *
-    * @param granularity ISO 8601 duration: PT1M, PT5M, PT1H, P1D
-    * @param start       Start of time window (ISO 8601)
-    * @param end         End of time window (ISO 8601)
-    */
     @GetMapping("/iops/primary/peak")
-    public IopsPeakResponse queryPrimaryIopsPeak(
+    public IopsPeakResource queryPrimaryIopsPeak(
         @RequestParam(defaultValue = "PT1H") String granularity,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end
     ) {
-        return iopsService.queryPrimaryIopsPeak(granularity, start, end);
+        return conversionService.convert(
+            iopsService.queryPrimaryIopsPeak(granularity, start, end),
+            IopsPeakResource.class);
     }
 }
