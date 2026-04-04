@@ -27,12 +27,12 @@ public class SlowQueryController {
 
     @GetMapping("/slow-queries")
     public List<SlowQueryResource> getSlowQueries(
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant since,
-        @RequestParam(required = false) Long durationMs,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
         @RequestParam(required = false) Long minDurationMillis,
         @RequestParam(required = false) Integer nLogs
     ) {
-        return slowQueryService.getSlowQueries(since, durationMs, minDurationMillis, nLogs).stream()
+        return slowQueryService.getSlowQueries(startDate, endDate, minDurationMillis, nLogs).stream()
             .map(q -> conversionService.convert(q, SlowQueryResource.class))
             .toList();
     }

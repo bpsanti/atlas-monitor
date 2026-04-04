@@ -74,11 +74,11 @@ export class SlowQueriesComponent implements OnInit {
     this.error = '';
     this.chartData = null;
 
-    const since = new Date(this.startDate).toISOString();
-    const durationMs = new Date(this.endDate).getTime() - new Date(this.startDate).getTime();
+    const startDate = new Date(this.startDate).toISOString();
+    const endDate = new Date(this.endDate).toISOString();
 
     this.slowQueryService
-      .getSlowQueries(since, durationMs, this.minDurationMillis ?? undefined)
+      .getSlowQueries(startDate, endDate, this.minDurationMillis ?? undefined)
       .subscribe({
         next: (data) => {
           this.queries = data;

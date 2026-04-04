@@ -18,6 +18,13 @@ public class PrimaryWindowRepository {
     private final PrimaryWindowDao dao;
     private final ConversionService conversionService;
 
+    public List<PrimaryWindow> findOverlapping(Instant start, Instant end) {
+        return dao.findByFromLessThanEqualAndUntilGreaterThanEqualOrderByFromAsc(end, start)
+            .stream()
+            .map(doc -> conversionService.convert(doc, PrimaryWindow.class))
+            .toList();
+    }
+
     public void save(PrimaryWindow window) {
         var oldProcessWindow = dao.findTopByOrderByUntilDesc()
             .filter(it -> Objects.equals(it.getProcessId(), window.processId()))

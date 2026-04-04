@@ -23,8 +23,8 @@ public class SlowQueryService {
     private final SyncProperties syncProperties;
 
     public List<SlowQuery> getSlowQueries(
-        Instant since,
-        Long durationMs,
+        Instant startDate,
+        Instant endDate,
         Long minDurationMillis,
         Integer nLogs
     ) {
@@ -32,21 +32,20 @@ public class SlowQueryService {
         boolean belowRetentionThreshold = minDurationMillis != null && minDurationMillis < retentionMinDurationMs;
 
         if (belowRetentionThreshold) {
-            return getSlowQueries(resolvePrimaryProcessId(), since, durationMs, minDurationMillis, nLogs);
+            return getSlowQueriesFromAtlas(resolvePrimaryProcessId(), startDate, endDate, minDurationMillis, nLogs);
         }
-        return getStoredSlowQueries(since, durationMs, minDurationMillis);
+
+        return slowQueryRepository.findByDateRange(startDate, endDate, minDurationMillis);
     }
 
-    public List<SlowQuery> getSlowQueries(
+    public List<SlowQuery> getSlowQueriesFromAtlas(
         String processId,
-        Instant since,
-        Long durationMs,
+        Instant startDate,
+        Instant endDate,
         Long minDurationMillis,
         Integer nLogs
     ) {
-        Long sinceEpoch = since != null ? since.toEpochMilli() : null;
-
-        var response = atlasApiClient.getSlowQueryLogs(processId, sinceEpoch, durationMs, nLogs);
+        var response = atlasApiClient.getSlowQueryLogs(processId, startDate, endDate, nLogs);
 
         List<AtlasSlowQueryResource> queries = response.slowQueries();
         if (queries == null) {
@@ -57,12 +56,6 @@ public class SlowQueryService {
             .map(q -> conversionService.convert(q, SlowQuery.class))
             .filter(q -> minDurationMillis == null || q.durationMillis() >= minDurationMillis)
             .toList();
-    }
-
-    private List<SlowQuery> getStoredSlowQueries(Instant since, Long durationMs, Long minDurationMillis) {
-        Instant until = durationMs != null ? since.plusMillis(durationMs) : Instant.now();
-        long minDuration = minDurationMillis != null ? minDurationMillis : 0;
-        return slowQueryRepository.findByDateRange(since, until, minDuration);
     }
 
     private String resolvePrimaryProcessId() {

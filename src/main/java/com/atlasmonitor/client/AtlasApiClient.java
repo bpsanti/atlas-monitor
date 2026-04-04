@@ -95,13 +95,18 @@ public class AtlasApiClient {
 
     public AtlasSlowQueryWrapperResource getSlowQueryLogs(
         String processId,
-        Long since,
-        Long duration,
+        Instant startDate,
+        Instant endDate,
         Integer nLogs
     ) {
         String basePath = "/groups/" + props.groupId()
             + "/processes/" + processId
             + "/performanceAdvisor/slowQueryLogs";
+
+        Long since = startDate != null ? startDate.toEpochMilli() : null;
+        Long duration = startDate != null && endDate != null
+            ? endDate.toEpochMilli() - startDate.toEpochMilli()
+            : null;
 
         return atlasRestClient.get()
             .uri(b -> {

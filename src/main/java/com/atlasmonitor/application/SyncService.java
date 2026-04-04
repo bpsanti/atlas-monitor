@@ -31,15 +31,22 @@ public class SyncService {
     private final SyncProperties syncProperties;
 
     @Scheduled(fixedDelayString = "${atlas.sync.interval}")
-    public void syncPrimaryWindows() {
+    public void sync() {
+        syncPrimaryWindows();
+        syncSlowQueries();
+    }
+
+    private void syncPrimaryWindows() {
         log.info("Starting primary window sync");
 
         Instant now = Instant.now();
         Instant from = syncMetadataRepository.computeSyncFrom(
-            PRIMARY_WINDOW_SYNC_ID, syncProperties.primaryWindowInitialLookback(), syncProperties.syncWindowOverlap());
+            PRIMARY_WINDOW_SYNC_ID,
+            syncProperties.primaryWindowInitialLookback(),
+            syncProperties.syncWindowOverlap()
+        );
 
         List<PrimaryWindow> windows = primaryResolutionService.resolvePrimaryWindows("PT1H", from, now);
-
         for (PrimaryWindow window : windows) {
             primaryWindowRepository.save(window);
         }
@@ -48,26 +55,33 @@ public class SyncService {
         log.info("Primary window sync complete: {} windows processed", windows.size());
     }
 
-    @Scheduled(fixedDelayString = "${atlas.sync.interval}")
-    public void syncSlowQueries() {
+    private void syncSlowQueries() {
         log.info("Starting slow query sync");
 
         Instant now = Instant.now();
         Instant from = syncMetadataRepository.computeSyncFrom(
-            SLOW_QUERY_SYNC_ID, syncProperties.slowQueryInitialLookback(), syncProperties.syncWindowOverlap());
+            SLOW_QUERY_SYNC_ID,
+            syncProperties.slowQueryInitialLookback(),
+            syncProperties.syncWindowOverlap()
+        );
         long minDurationMs = syncProperties.slowQueryMinDuration().toMillis();
         Duration batchWindow = syncProperties.slowQueryBatchWindow();
 
-        List<PrimaryWindow> primaryWindows = primaryResolutionService.resolvePrimaryWindows("PT1H", from, now);
-        log.info("Resolved {} primary windows for range [{} - {}]", primaryWindows.size(), from, now);
+        List<PrimaryWindow> primaryWindows = primaryWindowRepository.findOverlapping(from, now);
+        log.info("Found {} primary windows for range [{} - {}]", primaryWindows.size(), from, now);
 
         int inserted = 0;
         int total = 0;
 
-        for (int wi = 0; wi < primaryWindows.size(); wi++) {
-            PrimaryWindow window = primaryWindows.get(wi);
+        for (int index = 0; index < primaryWindows.size(); index++) {
+            PrimaryWindow window = primaryWindows.get(index);
             log.info("Processing primary window {}/{}: {} [{} - {}]",
-                wi + 1, primaryWindows.size(), window.processId(), window.from(), window.until());
+                index + 1,
+                primaryWindows.size(),
+                window.processId(),
+                window.from(),
+                window.until()
+            );
 
             Instant batchStart = window.from();
             int batchNum = 0;
@@ -79,17 +93,15 @@ public class SyncService {
                 }
                 batchNum++;
 
-                long batchDurationMs = Duration.between(batchStart, batchEnd).toMillis();
+                List<SlowQuery> queries = slowQueryService.getSlowQueriesFromAtlas(
+                    window.processId(),
+                    batchStart,
+                    batchEnd,
+                    minDurationMs,
+                    null
+                );
 
-                List<SlowQuery> queries = slowQueryService.getSlowQueries(
-                    window.processId(), batchStart, batchDurationMs, minDurationMs, null);
-
-                int batchInserted = 0;
-                for (SlowQuery query : queries) {
-                    if (slowQueryRepository.insertIfAbsent(query, window.processId())) {
-                        batchInserted++;
-                    }
-                }
+                int batchInserted = slowQueryRepository.insertAll(queries, window.processId());
 
                 total += queries.size();
                 inserted += batchInserted;
