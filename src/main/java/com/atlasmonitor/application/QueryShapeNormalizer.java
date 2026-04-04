@@ -4,11 +4,7 @@ import org.bson.Document;
 import org.bson.json.JsonWriterSettings;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.List;
 
 @Component
@@ -17,14 +13,6 @@ public class QueryShapeNormalizer {
     private static final JsonWriterSettings JSON_SETTINGS = JsonWriterSettings.builder()
         .outputMode(org.bson.json.JsonMode.RELAXED)
         .build();
-
-    public String computeShapeHash(String namespace, String planSummary, String filter) {
-        String normalizedFilter = extractShape(filter);
-        String raw = (namespace != null ? namespace : "")
-            + "|" + (planSummary != null ? planSummary : "")
-            + "|" + (normalizedFilter != null ? normalizedFilter : "");
-        return sha256(raw);
-    }
 
     public String extractShape(String filterJson) {
         if (filterJson == null || filterJson.isBlank()) {
@@ -64,15 +52,5 @@ public class QueryShapeNormalizer {
         }
 
         return filterDocument;
-    }
-
-    private String sha256(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
     }
 }
