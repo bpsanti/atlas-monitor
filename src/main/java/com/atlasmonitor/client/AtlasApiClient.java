@@ -96,8 +96,7 @@ public class AtlasApiClient {
     public AtlasSlowQueryWrapperResource getSlowQueryLogs(
         String processId,
         Instant startDate,
-        Instant endDate,
-        Integer nLogs
+        Instant endDate
     ) {
         String basePath = "/groups/" + props.groupId()
             + "/processes/" + processId
@@ -119,9 +118,6 @@ public class AtlasApiClient {
                 }
                 if (duration != null) {
                     b.queryParam("duration", duration);
-                }
-                if (nLogs != null) {
-                    b.queryParam("nLogs", nLogs);
                 }
                 return b.build();
             })

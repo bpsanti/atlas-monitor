@@ -10,14 +10,12 @@ export class SlowQueryService {
   getSlowQueries(
     startDate?: string,
     endDate?: string,
-    minDurationMillis?: number,
-    nLogs?: number
+    minDurationMillis?: number
   ): Observable<SlowQueryResponse[]> {
     let params = new HttpParams();
     if (startDate) params = params.set('startDate', startDate);
     if (endDate) params = params.set('endDate', endDate);
     if (minDurationMillis != null) params = params.set('minDurationMillis', minDurationMillis);
-    if (nLogs != null) params = params.set('nLogs', nLogs);
     return this.http.get<SlowQueryResponse[]>('/api/v1/slow-queries', { params });
   }
 

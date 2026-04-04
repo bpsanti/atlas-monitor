@@ -25,14 +25,13 @@ public class SlowQueryService {
     public List<SlowQuery> getSlowQueries(
         Instant startDate,
         Instant endDate,
-        Long minDurationMillis,
-        Integer nLogs
+        Long minDurationMillis
     ) {
         long retentionMinDurationMs = syncProperties.slowQueryMinDuration().toMillis();
         boolean belowRetentionThreshold = minDurationMillis != null && minDurationMillis < retentionMinDurationMs;
 
         if (belowRetentionThreshold) {
-            return getSlowQueriesFromAtlas(resolvePrimaryProcessId(), startDate, endDate, minDurationMillis, nLogs);
+            return getSlowQueriesFromAtlas(resolvePrimaryProcessId(), startDate, endDate, minDurationMillis);
         }
 
         return slowQueryRepository.findByDateRange(startDate, endDate, minDurationMillis);
@@ -42,10 +41,9 @@ public class SlowQueryService {
         String processId,
         Instant startDate,
         Instant endDate,
-        Long minDurationMillis,
-        Integer nLogs
+        Long minDurationMillis
     ) {
-        var response = atlasApiClient.getSlowQueryLogs(processId, startDate, endDate, nLogs);
+        var response = atlasApiClient.getSlowQueryLogs(processId, startDate, endDate);
 
         List<AtlasSlowQueryResource> queries = response.slowQueries();
         if (queries == null) {

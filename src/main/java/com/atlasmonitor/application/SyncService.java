@@ -97,8 +97,7 @@ public class SyncService {
                     window.processId(),
                     batchStart,
                     batchEnd,
-                    minDurationMs,
-                    null
+                    minDurationMs
                 );
 
                 int batchInserted = slowQueryRepository.insertAll(queries, window.processId());
