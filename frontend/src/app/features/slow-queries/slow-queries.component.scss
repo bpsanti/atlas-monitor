@@ -373,6 +373,13 @@ button[type='submit'] {
   }
 }
 
+.analysis-loading {
+  text-align: center;
+  color: $text-secondary;
+  font-size: 0.85rem;
+  padding: 0.75rem 0;
+}
+
 .analysis-result {
   margin-top: 0.75rem;
   display: flex;
@@ -385,6 +392,32 @@ button[type='submit'] {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: $text-muted;
+  }
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.analysis-meta {
+  font-size: 0.7rem;
+  color: $text-muted;
+  font-style: italic;
+}
+
+.reanalyze-btn {
+  margin-top: 0.75rem;
+  background: $bg-raised;
+  border: 1px solid $border;
+  color: $text-secondary;
+  height: 2rem;
+  font-size: 0.8rem;
+
+  &:hover:not(:disabled) {
+    background: $bg-subtle;
+    color: $text-primary;
   }
 }
 

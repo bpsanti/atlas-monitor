@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { SlowQueryResponse } from '../models/slow-query.model';
+import { Observable, map } from 'rxjs';
+import { SlowQueryResponse, SlowQueryAnalysisResponse } from '../models/slow-query.model';
 
 @Injectable({ providedIn: 'root' })
 export class SlowQueryService {
@@ -21,7 +21,13 @@ export class SlowQueryService {
     return this.http.get<SlowQueryResponse[]>('/api/v1/slow-queries', { params });
   }
 
-  analyzeQuery(query: SlowQueryResponse): Observable<{ analysis: string }> {
-    return this.http.post<{ analysis: string }>('/api/v1/slow-queries/analyze', query);
+  findAnalysis(query: SlowQueryResponse): Observable<SlowQueryAnalysisResponse | null> {
+    return this.http.post('/api/v1/slow-queries/analysis', query, { observe: 'response' }).pipe(
+      map(response => response.status === 204 ? null : response.body as SlowQueryAnalysisResponse)
+    );
+  }
+
+  analyzeQuery(query: SlowQueryResponse): Observable<SlowQueryAnalysisResponse> {
+    return this.http.post<SlowQueryAnalysisResponse>('/api/v1/slow-queries/analyze', query);
   }
 }

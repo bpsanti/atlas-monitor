@@ -5,14 +5,24 @@ import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.atlasmonitor.application.model.SlowQuery;
+import com.atlasmonitor.application.model.SlowQueryAnalysis;
+import com.atlasmonitor.persistence.document.SlowQueryAnalysisDocument;
+import com.atlasmonitor.persistence.repository.SlowQueryAnalysisRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SlowQueryAnalysisService {
 
     private final AnthropicClient anthropicClient;
+    private final SlowQueryAnalysisRepository analysisRepository;
+    private final QueryShapeNormalizer queryShapeNormalizer;
 
     private static final String SYSTEM_PROMPT = """
             You are a MongoDB performance analyst. You will receive details about a slow query \
@@ -30,7 +40,46 @@ public class SlowQueryAnalysisService {
             Be concise and practical. Use markdown formatting. \
             If the query looks efficient, say so briefly.""";
 
-    public String analyze(SlowQuery query) {
+    public Optional<SlowQueryAnalysis> findAnalysis(SlowQuery query) {
+        String shapeHash = queryShapeNormalizer.computeShapeHash(
+            query.namespace(), query.planSummary(), query.filter());
+
+        return analysisRepository.findByShapeHash(shapeHash)
+            .map(doc -> new SlowQueryAnalysis(
+                doc.getShapeHash(), doc.getNamespace(), doc.getPlanSummary(),
+                doc.getAnalysis(), doc.getAnalyzedAt(), true));
+    }
+
+    public SlowQueryAnalysis analyze(SlowQuery query) {
+        String shapeHash = queryShapeNormalizer.computeShapeHash(
+            query.namespace(), query.planSummary(), query.filter());
+
+        Optional<SlowQueryAnalysisDocument> cached = analysisRepository.findByShapeHash(shapeHash);
+        if (cached.isPresent()) {
+            log.info("Analysis cache hit for shape hash: {}", shapeHash);
+            SlowQueryAnalysisDocument doc = cached.get();
+            return new SlowQueryAnalysis(
+                doc.getShapeHash(), doc.getNamespace(), doc.getPlanSummary(),
+                doc.getAnalysis(), doc.getAnalyzedAt(), true);
+        }
+
+        log.info("Analysis cache miss for shape hash: {}, calling Claude", shapeHash);
+        String analysisText = callClaude(query);
+        Instant now = Instant.now();
+
+        var doc = new SlowQueryAnalysisDocument();
+        doc.setShapeHash(shapeHash);
+        doc.setNamespace(query.namespace());
+        doc.setPlanSummary(query.planSummary());
+        doc.setNormalizedFilter(queryShapeNormalizer.extractShape(query.filter()));
+        doc.setAnalysis(analysisText);
+        doc.setAnalyzedAt(now);
+        analysisRepository.save(doc);
+
+        return new SlowQueryAnalysis(shapeHash, query.namespace(), query.planSummary(), analysisText, now, false);
+    }
+
+    private String callClaude(SlowQuery query) {
         String userMessage = buildUserMessage(query);
 
         MessageCreateParams params = MessageCreateParams.builder()

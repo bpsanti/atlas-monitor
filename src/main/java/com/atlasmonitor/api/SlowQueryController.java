@@ -1,7 +1,9 @@
 package com.atlasmonitor.api;
 
+import com.atlasmonitor.api.resource.SlowQueryAnalysisResource;
 import com.atlasmonitor.api.resource.SlowQueryResource;
 import com.atlasmonitor.application.model.SlowQuery;
+import com.atlasmonitor.application.model.SlowQueryAnalysis;
 import com.atlasmonitor.application.SlowQueryAnalysisService;
 import com.atlasmonitor.application.SlowQueryService;
 import lombok.RequiredArgsConstructor;
@@ -9,9 +11,10 @@ import org.springframework.core.convert.ConversionService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.http.ResponseEntity;
+
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -34,10 +37,24 @@ public class SlowQueryController {
             .toList();
     }
 
-    @PostMapping("/slow-queries/analyze")
-    public Map<String, String> analyzeSlowQuery(@RequestBody SlowQueryResource queryResource) {
+    @PostMapping("/slow-queries/analysis")
+    public ResponseEntity<SlowQueryAnalysisResource> findAnalysis(@RequestBody SlowQueryResource queryResource) {
         SlowQuery query = conversionService.convert(queryResource, SlowQuery.class);
-        String analysis = analysisService.analyze(query);
-        return Map.of("analysis", analysis);
+        return analysisService.findAnalysis(query)
+            .map(result -> ResponseEntity.ok(new SlowQueryAnalysisResource(
+                result.analysis(), result.planSummary(), result.analyzedAt(), result.cached())))
+            .orElse(ResponseEntity.noContent().build());
+    }
+
+    @PostMapping("/slow-queries/analyze")
+    public SlowQueryAnalysisResource analyzeSlowQuery(@RequestBody SlowQueryResource queryResource) {
+        SlowQuery query = conversionService.convert(queryResource, SlowQuery.class);
+        SlowQueryAnalysis result = analysisService.analyze(query);
+        return new SlowQueryAnalysisResource(
+            result.analysis(),
+            result.planSummary(),
+            result.analyzedAt(),
+            result.cached()
+        );
     }
 }

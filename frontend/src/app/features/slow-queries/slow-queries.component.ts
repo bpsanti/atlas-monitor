@@ -16,7 +16,7 @@ import 'chartjs-adapter-date-fns';
 import { enUS, ptBR } from 'date-fns/locale';
 import { marked } from 'marked';
 import { SlowQueryService } from '../../services/slow-query.service';
-import { SlowQueryResponse } from '../../models/slow-query.model';
+import { SlowQueryResponse, SlowQueryAnalysisResponse } from '../../models/slow-query.model';
 
 Chart.register(BubbleController, PointElement, LinearScale, TimeScale, Tooltip, Legend);
 
@@ -45,7 +45,9 @@ export class SlowQueriesComponent implements OnInit {
   sortDirection: 'asc' | 'desc' = 'desc';
   selectedQuery: SlowQueryResponse | null = null;
   analysisHtml: string | null = null;
+  analysisMetadata: SlowQueryAnalysisResponse | null = null;
   analyzing = false;
+  loadingAnalysis = false;
   chartData: ChartData<'bubble'> | null = null;
   chartOptions: ChartOptions<'bubble'> | null = null;
   readonly chartType = 'bubble' as const;
@@ -193,14 +195,33 @@ export class SlowQueriesComponent implements OnInit {
   selectQuery(query: SlowQueryResponse): void {
     this.selectedQuery = query;
     this.analysisHtml = null;
+    this.analysisMetadata = null;
     this.analyzing = false;
+    this.loadingAnalysis = true;
     this.cdr.markForCheck();
+
+    this.slowQueryService.findAnalysis(query).subscribe({
+      next: (res) => {
+        if (res) {
+          this.analysisMetadata = res;
+          this.analysisHtml = marked.parse(res.analysis) as string;
+        }
+        this.loadingAnalysis = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loadingAnalysis = false;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   closePanel(): void {
     this.selectedQuery = null;
     this.analysisHtml = null;
+    this.analysisMetadata = null;
     this.analyzing = false;
+    this.loadingAnalysis = false;
     this.cdr.markForCheck();
   }
 
@@ -208,8 +229,10 @@ export class SlowQueriesComponent implements OnInit {
     if (!this.selectedQuery || this.analyzing) return;
     this.analyzing = true;
     this.analysisHtml = null;
+    this.analysisMetadata = null;
     this.slowQueryService.analyzeQuery(this.selectedQuery).subscribe({
       next: (res) => {
+        this.analysisMetadata = res;
         this.analysisHtml = marked.parse(res.analysis) as string;
         this.analyzing = false;
         this.cdr.markForCheck();
