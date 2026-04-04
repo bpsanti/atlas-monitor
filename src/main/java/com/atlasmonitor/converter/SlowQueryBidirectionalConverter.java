@@ -1,6 +1,10 @@
 package com.atlasmonitor.converter;
 
 import com.atlasmonitor.api.resource.SlowQueryResource;
+import com.atlasmonitor.api.resource.SlowQueryResource.QueryExecutionResource;
+import com.atlasmonitor.application.model.SlowQueryEfficiencyRatios;
+import com.atlasmonitor.application.model.SlowQueryExecution;
+import com.atlasmonitor.application.model.SlowQueryShape;
 import com.atlasmonitor.application.model.SlowQuery;
 import org.springframework.stereotype.Component;
 
@@ -9,49 +13,69 @@ public class SlowQueryBidirectionalConverter implements BidirectionalConverter<S
 
     @Override
     public SlowQueryResource convertTo(SlowQuery source) {
+        var exec = source.execution();
+        var ratios = exec.ratios();
+
+        var executionResource = new QueryExecutionResource(
+            exec.keysExaminedCount(),
+            exec.docsExaminedCount(),
+            exec.docsReturnedCount(),
+            exec.hasIndexCoverage(),
+            exec.hasSortStage(),
+            ratios.docsExaminedToReturnedRatio(),
+            ratios.keysExaminedToReturnedRatio(),
+            exec.executionDurationMillis(),
+            exec.responseLengthBytes(),
+            exec.yieldsCount(),
+            exec.remoteAddress(),
+            exec.isCursorExhausted()
+        );
+
         return new SlowQueryResource(
-            source.date(),
-            source.type(),
+            source.occurredAt(),
+            source.operationType(),
             source.namespace(),
             source.durationMillis(),
-            source.planSummary(),
-            source.keysExamined(),
-            source.docsExamined(),
-            source.nreturned(),
-            source.docsExaminedReturnedRatio(),
-            source.keysExaminedReturnedRatio(),
-            source.hasIndexCoverage(),
-            source.hasSort(),
-            source.operationExecutionTime(),
-            source.responseLength(),
-            source.numYields(),
-            source.remote(),
-            source.cursorExhausted(),
-            source.filter()
+            source.shape().planSummary(),
+            source.shape().filter(),
+            executionResource
         );
     }
 
     @Override
     public SlowQuery convertFrom(SlowQueryResource source) {
+        var shape = new SlowQueryShape(
+            source.planSummary(),
+            source.filter()
+        );
+
+        var exec = source.execution();
+        var ratios = new SlowQueryEfficiencyRatios(
+            exec.docsExaminedToReturnedRatio(),
+            exec.keysExaminedToReturnedRatio()
+        );
+
+        var execution = new SlowQueryExecution(
+            exec.keysExaminedCount(),
+            exec.docsExaminedCount(),
+            exec.docsReturnedCount(),
+            exec.hasIndexCoverage(),
+            exec.hasSortStage(),
+            ratios,
+            exec.executionDurationMillis(),
+            exec.responseLengthBytes(),
+            exec.yieldsCount(),
+            exec.remoteAddress(),
+            exec.isCursorExhausted()
+        );
+
         return new SlowQuery(
-            source.date(),
-            source.type(),
+            source.occurredAt(),
+            source.operationType(),
             source.namespace(),
             source.durationMillis(),
-            source.planSummary(),
-            source.keysExamined(),
-            source.docsExamined(),
-            source.nreturned(),
-            source.docsExaminedReturnedRatio(),
-            source.keysExaminedReturnedRatio(),
-            source.hasIndexCoverage(),
-            source.hasSort(),
-            source.operationExecutionTime(),
-            source.responseLength(),
-            source.numYields(),
-            source.remote(),
-            source.cursorExhausted(),
-            source.filter()
+            shape,
+            execution
         );
     }
 }

@@ -1,10 +1,9 @@
 package com.atlasmonitor.converter;
 
-import com.atlasmonitor.client.resource.AtlasDataPointResource;
 import com.atlasmonitor.client.resource.AtlasMetricResource;
-import com.atlasmonitor.application.model.DataPoint;
-import com.atlasmonitor.application.model.MetricSeries;
-import com.atlasmonitor.application.model.Peak;
+import com.atlasmonitor.application.model.IopsDataPoint;
+import com.atlasmonitor.application.model.IopsMetricSeries;
+import com.atlasmonitor.application.model.IopsMetricPeak;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
@@ -12,26 +11,26 @@ import java.util.Comparator;
 import java.util.List;
 
 @Component
-public class AtlasMetricToMetricSeriesConverter implements Converter<AtlasMetricResource, MetricSeries> {
+public class AtlasMetricToMetricSeriesConverter implements Converter<AtlasMetricResource, IopsMetricSeries> {
 
     @Override
-    public MetricSeries convert(AtlasMetricResource source) {
-        List<DataPoint> dataPoints = source.dataPoints().stream()
-            .map(dp -> new DataPoint(dp.timestamp(), dp.value()))
+    public IopsMetricSeries convert(AtlasMetricResource source) {
+        List<IopsDataPoint> dataPoints = source.dataPoints().stream()
+            .map(dp -> new IopsDataPoint(dp.timestamp(), dp.value()))
             .toList();
 
-        List<DataPoint> nonNull = dataPoints.stream()
+        List<IopsDataPoint> nonNull = dataPoints.stream()
             .filter(dp -> dp.value() != null)
             .toList();
 
         if (nonNull.isEmpty()) {
-            return new MetricSeries(dataPoints, null);
+            return new IopsMetricSeries(dataPoints, null);
         }
 
-        DataPoint peakPoint = nonNull.stream()
-            .max(Comparator.comparingDouble(DataPoint::value))
+        IopsDataPoint peakPoint = nonNull.stream()
+            .max(Comparator.comparingDouble(IopsDataPoint::value))
             .orElseThrow();
 
-        return new MetricSeries(dataPoints, new Peak(peakPoint.timestamp(), peakPoint.value()));
+        return new IopsMetricSeries(dataPoints, new IopsMetricPeak(peakPoint.timestamp(), peakPoint.value()));
     }
 }

@@ -41,7 +41,7 @@ export class SlowQueriesComponent implements OnInit {
   error = '';
   queries: SlowQueryResponse[] = [];
   sortedQueries: SlowQueryResponse[] = [];
-  sortColumn: 'date' | 'durationMillis' = 'date';
+  sortColumn: 'occurredAt' | 'durationMillis' = 'occurredAt';
   sortDirection: 'asc' | 'desc' = 'desc';
   selectedQuery: SlowQueryResponse | null = null;
   analysisHtml: string | null = null;
@@ -115,7 +115,7 @@ export class SlowQueriesComponent implements OnInit {
       return {
         label: ns,
         data: queries.map((q) => ({
-          x: new Date(q.date).getTime(),
+          x: new Date(q.occurredAt).getTime(),
           y: q.durationMillis / 1000,
           r: 6,
         })),
@@ -245,7 +245,7 @@ export class SlowQueriesComponent implements OnInit {
     });
   }
 
-  toggleSort(column: 'date' | 'durationMillis'): void {
+  toggleSort(column: 'occurredAt' | 'durationMillis'): void {
     if (this.sortColumn === column) {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
@@ -259,8 +259,8 @@ export class SlowQueriesComponent implements OnInit {
   private sortQueries(): void {
     this.sortedQueries = [...this.queries].sort((a, b) => {
       let cmp: number;
-      if (this.sortColumn === 'date') {
-        cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (this.sortColumn === 'occurredAt') {
+        cmp = new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime();
       } else {
         cmp = a.durationMillis - b.durationMillis;
       }
@@ -268,7 +268,7 @@ export class SlowQueriesComponent implements OnInit {
     });
   }
 
-  sortIcon(column: 'date' | 'durationMillis'): string {
+  sortIcon(column: 'occurredAt' | 'durationMillis'): string {
     if (this.sortColumn !== column) return '';
     return this.sortDirection === 'asc' ? ' ▲' : ' ▼';
   }

@@ -1,22 +1,26 @@
+export interface QueryExecutionResponse {
+  keysExaminedCount: number | null;
+  docsExaminedCount: number | null;
+  docsReturnedCount: number | null;
+  hasIndexCoverage: boolean | null;
+  hasSortStage: boolean | null;
+  docsExaminedToReturnedRatio: number | null;
+  keysExaminedToReturnedRatio: number | null;
+  executionDurationMillis: number | null;
+  responseLengthBytes: number | null;
+  yieldsCount: number | null;
+  remoteAddress: string | null;
+  isCursorExhausted: boolean | null;
+}
+
 export interface SlowQueryResponse {
-  date: string;
-  type: string;
+  occurredAt: string;
+  operationType: string;
   namespace: string;
   durationMillis: number;
   planSummary: string | null;
-  keysExamined: number | null;
-  docsExamined: number | null;
-  nreturned: number | null;
-  docsExaminedReturnedRatio: number | null;
-  keysExaminedReturnedRatio: number | null;
-  hasIndexCoverage: boolean | null;
-  hasSort: boolean | null;
-  operationExecutionTime: number | null;
-  responseLength: number | null;
-  numYields: number | null;
-  remote: string | null;
-  cursorExhausted: boolean | null;
   filter: string | null;
+  execution: QueryExecutionResponse;
 }
 
 export interface SlowQueryAnalysisResponse {

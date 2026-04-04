@@ -12,10 +12,10 @@ public record IopsMetrics(
     Instant start,
     Instant end,
     List<Instant> roleChanges,
-    MetricSeries read,
-    MetricSeries write,
-    MetricSeries total,
-    MetricSeries maxRead,
-    MetricSeries maxWrite,
-    MetricSeries maxTotal
+    IopsMetricSeries read,
+    IopsMetricSeries write,
+    IopsMetricSeries total,
+    IopsMetricSeries maxRead,
+    IopsMetricSeries maxWrite,
+    IopsMetricSeries maxTotal
 ) {}

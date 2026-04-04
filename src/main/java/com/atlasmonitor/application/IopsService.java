@@ -3,11 +3,11 @@ package com.atlasmonitor.application;
 import com.atlasmonitor.client.AtlasApiClient;
 import com.atlasmonitor.client.resource.AtlasMetricResource;
 import com.atlasmonitor.client.resource.AtlasMetricWrapperResource;
-import com.atlasmonitor.application.model.DataPoint;
+import com.atlasmonitor.application.model.IopsDataPoint;
 import com.atlasmonitor.application.model.IopsMetrics;
 import com.atlasmonitor.application.model.IopsPeak;
-import com.atlasmonitor.application.model.MetricSeries;
-import com.atlasmonitor.application.model.Peak;
+import com.atlasmonitor.application.model.IopsMetricSeries;
+import com.atlasmonitor.application.model.IopsMetricPeak;
 import com.atlasmonitor.application.model.ProcessNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.ConversionService;
@@ -124,27 +124,27 @@ public class IopsService {
         );
     }
 
-    private MetricSeries mergeMetrics(List<MetricSeries> seriesList) {
-        List<DataPoint> allPoints = seriesList.stream()
+    private IopsMetricSeries mergeMetrics(List<IopsMetricSeries> seriesList) {
+        List<IopsDataPoint> allPoints = seriesList.stream()
             .filter(s -> s != null)
             .flatMap(s -> s.dataPoints().stream())
-            .sorted(Comparator.comparing(DataPoint::timestamp,
+            .sorted(Comparator.comparing(IopsDataPoint::timestamp,
                 Comparator.nullsLast(Comparator.naturalOrder())))
             .toList();
 
-        List<DataPoint> nonNull = allPoints.stream()
+        List<IopsDataPoint> nonNull = allPoints.stream()
             .filter(dp -> dp.value() != null)
             .toList();
 
         if (nonNull.isEmpty()) {
-            return new MetricSeries(allPoints, null);
+            return new IopsMetricSeries(allPoints, null);
         }
 
-        DataPoint peakPoint = nonNull.stream()
-            .max(Comparator.comparingDouble(DataPoint::value))
+        IopsDataPoint peakPoint = nonNull.stream()
+            .max(Comparator.comparingDouble(IopsDataPoint::value))
             .orElseThrow();
 
-        return new MetricSeries(allPoints, new Peak(peakPoint.timestamp(), peakPoint.value()));
+        return new IopsMetricSeries(allPoints, new IopsMetricPeak(peakPoint.timestamp(), peakPoint.value()));
     }
 
     private IopsMetrics queryIopsForNode(
@@ -187,11 +187,11 @@ public class IopsService {
                 "No disk partition found for process: " + processId));
     }
 
-    private Peak peakOf(MetricSeries series) {
+    private IopsMetricPeak peakOf(IopsMetricSeries series) {
         return series != null ? series.peak() : null;
     }
 
-    private MetricSeries convertMetric(AtlasMetricResource metric) {
-        return metric != null ? conversionService.convert(metric, MetricSeries.class) : null;
+    private IopsMetricSeries convertMetric(AtlasMetricResource metric) {
+        return metric != null ? conversionService.convert(metric, IopsMetricSeries.class) : null;
     }
 }

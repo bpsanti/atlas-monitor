@@ -5,8 +5,8 @@ import com.atlasmonitor.api.resource.IopsMetricsResource.DataPointResource;
 import com.atlasmonitor.api.resource.IopsMetricsResource.MetricSummaryResource;
 import com.atlasmonitor.api.resource.IopsMetricsResource.PeakResource;
 import com.atlasmonitor.application.model.IopsMetrics;
-import com.atlasmonitor.application.model.MetricSeries;
-import com.atlasmonitor.application.model.Peak;
+import com.atlasmonitor.application.model.IopsMetricSeries;
+import com.atlasmonitor.application.model.IopsMetricPeak;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +35,7 @@ public class IopsMetricsToIopsMetricsResourceConverter implements Converter<Iops
         );
     }
 
-    private MetricSummaryResource toSummaryResource(MetricSeries series) {
+    private MetricSummaryResource toSummaryResource(IopsMetricSeries series) {
         if (series == null) {
             return null;
         }
@@ -45,7 +45,7 @@ public class IopsMetricsToIopsMetricsResourceConverter implements Converter<Iops
         return new MetricSummaryResource(dataPoints, toPeakResource(series.peak()));
     }
 
-    private PeakResource toPeakResource(Peak peak) {
+    private PeakResource toPeakResource(IopsMetricPeak peak) {
         if (peak == null) {
             return null;
         }

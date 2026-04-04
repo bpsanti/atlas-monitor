@@ -4,6 +4,7 @@ import com.anthropic.client.AnthropicClient;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
+import com.atlasmonitor.application.model.SlowQueryExecution;
 import com.atlasmonitor.application.model.SlowQuery;
 import com.atlasmonitor.application.model.SlowQueryAnalysis;
 import com.atlasmonitor.persistence.repository.SlowQueryAnalysisRepository;
@@ -30,8 +31,8 @@ public class SlowQueryAnalysisService {
             1. **Index Usage**: Based on the planSummary, determine if an appropriate index is being used. \
               Flag COLLSCAN as critical. For IXSCAN, evaluate if the index covers the query fields.
             2. **Efficiency Ratios**:
-              - keysExamined vs nreturned: ideally close to 1:1. High ratio means the index is not selective enough.
-              - docsExamined vs nreturned: ideally close to 1:1. High ratio means too many documents are being scanned.
+              - keysExamined vs docsReturned: ideally close to 1:1. High ratio means the index is not selective enough.
+              - docsExamined vs docsReturned: ideally close to 1:1. High ratio means too many documents are being scanned.
             3. **Filter/Pipeline Analysis**: Examine the filter or aggregation pipeline for optimization opportunities \
               (e.g., missing indexes on filter fields, unselective leading fields, unnecessary stages).
             4. **Actionable Recommendations**: Suggest specific index creation commands or query rewrites.
@@ -41,13 +42,13 @@ public class SlowQueryAnalysisService {
 
     public Optional<SlowQueryAnalysis> findAnalysis(SlowQuery query) {
         String shapeHash = queryShapeNormalizer.computeShapeHash(
-            query.namespace(), query.planSummary(), query.filter());
+            query.namespace(), query.shape().planSummary(), query.shape().filter());
         return analysisRepository.findByShapeHash(shapeHash);
     }
 
     public SlowQueryAnalysis analyze(SlowQuery query) {
         String shapeHash = queryShapeNormalizer.computeShapeHash(
-            query.namespace(), query.planSummary(), query.filter());
+            query.namespace(), query.shape().planSummary(), query.shape().filter());
 
         Optional<SlowQueryAnalysis> cached = analysisRepository.findByShapeHash(shapeHash);
         if (cached.isPresent()) {
@@ -58,10 +59,10 @@ public class SlowQueryAnalysisService {
         log.info("Analysis cache miss for shape hash: {}, calling Claude", shapeHash);
         String analysisText = callClaude(query);
 
-        analysisRepository.save(shapeHash, query.namespace(), query.planSummary(),
-            queryShapeNormalizer.extractShape(query.filter()), analysisText);
+        analysisRepository.save(shapeHash, query.namespace(), query.shape().planSummary(),
+            queryShapeNormalizer.extractShape(query.shape().filter()), analysisText);
 
-        return new SlowQueryAnalysis(shapeHash, query.namespace(), query.planSummary(),
+        return new SlowQueryAnalysis(shapeHash, query.namespace(), query.shape().planSummary(),
             analysisText, Instant.now(), false);
     }
 
@@ -85,44 +86,47 @@ public class SlowQueryAnalysisService {
     }
 
     private String buildUserMessage(SlowQuery query) {
+        var exec = query.execution();
+        var ratios = exec.ratios();
+
         StringBuilder sb = new StringBuilder();
         sb.append("## Slow Query Details\n\n");
         sb.append("- **Namespace**: ").append(query.namespace()).append("\n");
-        sb.append("- **Type**: ").append(query.type()).append("\n");
+        sb.append("- **Type**: ").append(query.operationType()).append("\n");
         sb.append("- **Duration**: ").append(query.durationMillis()).append("ms\n");
 
-        if (query.planSummary() != null) {
-            sb.append("- **Plan Summary**: ").append(query.planSummary()).append("\n");
+        if (query.shape().planSummary() != null) {
+            sb.append("- **Plan Summary**: ").append(query.shape().planSummary()).append("\n");
         }
-        if (query.keysExamined() != null) {
-            sb.append("- **Keys Examined**: ").append(query.keysExamined()).append("\n");
+        if (exec.keysExaminedCount() != null) {
+            sb.append("- **Keys Examined**: ").append(exec.keysExaminedCount()).append("\n");
         }
-        if (query.docsExamined() != null) {
-            sb.append("- **Docs Examined**: ").append(query.docsExamined()).append("\n");
+        if (exec.docsExaminedCount() != null) {
+            sb.append("- **Docs Examined**: ").append(exec.docsExaminedCount()).append("\n");
         }
-        if (query.nreturned() != null) {
-            sb.append("- **Documents Returned**: ").append(query.nreturned()).append("\n");
+        if (exec.docsReturnedCount() != null) {
+            sb.append("- **Documents Returned**: ").append(exec.docsReturnedCount()).append("\n");
         }
-        if (query.docsExaminedReturnedRatio() != null) {
-            sb.append("- **Docs Examined/Returned Ratio**: ").append(query.docsExaminedReturnedRatio()).append("\n");
+        if (ratios.docsExaminedToReturnedRatio() != null) {
+            sb.append("- **Docs Examined/Returned Ratio**: ").append(ratios.docsExaminedToReturnedRatio()).append("\n");
         }
-        if (query.keysExaminedReturnedRatio() != null) {
-            sb.append("- **Keys Examined/Returned Ratio**: ").append(query.keysExaminedReturnedRatio()).append("\n");
+        if (ratios.keysExaminedToReturnedRatio() != null) {
+            sb.append("- **Keys Examined/Returned Ratio**: ").append(ratios.keysExaminedToReturnedRatio()).append("\n");
         }
-        if (query.hasIndexCoverage() != null) {
-            sb.append("- **Has Index Coverage**: ").append(query.hasIndexCoverage()).append("\n");
+        if (exec.hasIndexCoverage() != null) {
+            sb.append("- **Has Index Coverage**: ").append(exec.hasIndexCoverage()).append("\n");
         }
-        if (query.hasSort() != null) {
-            sb.append("- **Has Sort**: ").append(query.hasSort()).append("\n");
+        if (exec.hasSortStage() != null) {
+            sb.append("- **Has Sort**: ").append(exec.hasSortStage()).append("\n");
         }
-        if (query.numYields() != null) {
-            sb.append("- **Num Yields**: ").append(query.numYields()).append("\n");
+        if (exec.yieldsCount() != null) {
+            sb.append("- **Yields Count**: ").append(exec.yieldsCount()).append("\n");
         }
-        if (query.cursorExhausted() != null) {
-            sb.append("- **Cursor Exhausted**: ").append(query.cursorExhausted()).append("\n");
+        if (exec.isCursorExhausted() != null) {
+            sb.append("- **Cursor Exhausted**: ").append(exec.isCursorExhausted()).append("\n");
         }
-        if (query.filter() != null) {
-            sb.append("\n## Filter / Pipeline\n\n```json\n").append(query.filter()).append("\n```\n");
+        if (query.shape().filter() != null) {
+            sb.append("\n## Filter / Pipeline\n\n```json\n").append(query.shape().filter()).append("\n```\n");
         }
 
         return sb.toString();

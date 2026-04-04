@@ -10,10 +10,10 @@ public record IopsPeak(
     String granularity,
     Instant start,
     Instant end,
-    Peak read,
-    Peak write,
-    Peak total,
-    Peak maxRead,
-    Peak maxWrite,
-    Peak maxTotal
+    IopsMetricPeak read,
+    IopsMetricPeak write,
+    IopsMetricPeak total,
+    IopsMetricPeak maxRead,
+    IopsMetricPeak maxWrite,
+    IopsMetricPeak maxTotal
 ) {}

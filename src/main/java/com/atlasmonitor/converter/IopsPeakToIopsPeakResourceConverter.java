@@ -3,7 +3,7 @@ package com.atlasmonitor.converter;
 import com.atlasmonitor.api.resource.IopsPeakResource;
 import com.atlasmonitor.api.resource.IopsMetricsResource.PeakResource;
 import com.atlasmonitor.application.model.IopsPeak;
-import com.atlasmonitor.application.model.Peak;
+import com.atlasmonitor.application.model.IopsMetricPeak;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +29,7 @@ public class IopsPeakToIopsPeakResourceConverter implements Converter<IopsPeak, 
         );
     }
 
-    private PeakResource toPeakResource(Peak peak) {
+    private PeakResource toPeakResource(IopsMetricPeak peak) {
         if (peak == null) {
             return null;
         }

@@ -2,6 +2,9 @@ package com.atlasmonitor.converter;
 
 import com.atlasmonitor.client.resource.AtlasSlowQueryMetricsResource;
 import com.atlasmonitor.client.resource.AtlasSlowQueryResource;
+import com.atlasmonitor.application.model.SlowQueryEfficiencyRatios;
+import com.atlasmonitor.application.model.SlowQueryExecution;
+import com.atlasmonitor.application.model.SlowQueryShape;
 import com.atlasmonitor.application.model.SlowQuery;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,34 +35,62 @@ public class AtlasSlowQueryToSlowQueryConverter implements Converter<AtlasSlowQu
                 ? metrics.operationExecutionTime()
                 : attr.path("durationMillis").asLong(0);
 
+            var shape = new SlowQueryShape(
+                textOrNull(attr, "planSummary"),
+                parseFilter(attr)
+            );
+
+            var ratios = new SlowQueryEfficiencyRatios(
+                metrics.docsExaminedReturnedRatio(),
+                metrics.keysExaminedReturnedRatio()
+            );
+
+            var execution = new SlowQueryExecution(
+                metrics.keysExamined(),
+                metrics.docsExamined(),
+                metrics.docsReturned(),
+                metrics.hasIndexCoverage(),
+                metrics.hasSort(),
+                ratios,
+                metrics.operationExecutionTime(),
+                metrics.responseLength(),
+                metrics.numYields(),
+                textOrNull(attr, "remote"),
+                booleanOrNull(attr, "cursorExhausted")
+            );
+
             return new SlowQuery(
                 Instant.parse(root.path("t").path("$date").asText()),
                 attr.path("type").asText(null),
                 attr.path("ns").asText(source.namespace()),
                 durationMillis,
-                textOrNull(attr, "planSummary"),
+                shape,
+                execution
+            );
+        } catch (Exception e) {
+            var ratios = new SlowQueryEfficiencyRatios(
+                metrics.docsExaminedReturnedRatio(),
+                metrics.keysExaminedReturnedRatio()
+            );
+
+            var execution = new SlowQueryExecution(
                 metrics.keysExamined(),
                 metrics.docsExamined(),
                 metrics.docsReturned(),
-                metrics.docsExaminedReturnedRatio(),
-                metrics.keysExaminedReturnedRatio(),
                 metrics.hasIndexCoverage(),
                 metrics.hasSort(),
+                ratios,
                 metrics.operationExecutionTime(),
                 metrics.responseLength(),
                 metrics.numYields(),
-                textOrNull(attr, "remote"),
-                booleanOrNull(attr, "cursorExhausted"),
-                parseFilter(attr)
+                null,
+                null
             );
-        } catch (Exception e) {
+
             return new SlowQuery(
-                null, null, source.namespace(), 0, null,
-                metrics.keysExamined(), metrics.docsExamined(), metrics.docsReturned(),
-                metrics.docsExaminedReturnedRatio(), metrics.keysExaminedReturnedRatio(),
-                metrics.hasIndexCoverage(), metrics.hasSort(), metrics.operationExecutionTime(),
-                metrics.responseLength(), metrics.numYields(),
-                null, null, null
+                null, null, source.namespace(), 0,
+                new SlowQueryShape(null, null),
+                execution
             );
         }
     }
