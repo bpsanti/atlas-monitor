@@ -16,8 +16,8 @@ import java.time.Instant;
 @AllArgsConstructor
 @Document(collection = "slow_queries")
 @CompoundIndexes({
-    @CompoundIndex(name = "dedup_idx", def = "{'date': 1, 'namespace': 1, 'durationMillis': 1, 'filter': 1}", unique = true),
-    @CompoundIndex(name = "namespace_date_idx", def = "{'namespace': 1, 'date': 1}")
+    @CompoundIndex(name = "dedup_idx", def = "{'occurredAt': 1, 'namespace': 1, 'durationMillis': 1, 'queryFilter': 1}", unique = true),
+    @CompoundIndex(name = "namespace_date_idx", def = "{'namespace': 1, 'occurredAt': 1}")
 })
 public class SlowQueryDocument {
 
@@ -25,24 +25,24 @@ public class SlowQueryDocument {
     private String id;
 
     @Indexed
-    private Instant date;
-    private String type;
+    private Instant occurredAt;
+    private String operationType;
     private String namespace;
     private long durationMillis;
     private String planSummary;
-    private Long keysExamined;
-    private Long docsExamined;
-    private Long nreturned;
-    private Double docsExaminedReturnedRatio;
-    private Double keysExaminedReturnedRatio;
+    private Long keysExaminedCount;
+    private Long docsExaminedCount;
+    private Long docsReturnedCount;
+    private Double docsExaminedToReturnedRatio;
+    private Double keysExaminedToReturnedRatio;
     private Boolean hasIndexCoverage;
-    private Boolean hasSort;
-    private Long operationExecutionTime;
-    private Long responseLength;
-    private Long numYields;
-    private String remote;
-    private Boolean cursorExhausted;
-    private String filter;
+    private Boolean hasSortStage;
+    private Long executionDurationMillis;
+    private Long responseLengthBytes;
+    private Long yieldsCount;
+    private String remoteAddress;
+    private Boolean isCursorExhausted;
+    private String queryFilter;
 
     private String processId;
     private Instant syncedAt;

@@ -8,8 +8,8 @@ import java.util.List;
 
 public interface SlowQueryDao extends MongoRepository<SlowQueryDocument, String> {
 
-    List<SlowQueryDocument> findByDateBetweenAndDurationMillisGreaterThanEqualOrderByDateDesc(
+    List<SlowQueryDocument> findByOccurredAtBetweenAndDurationMillisGreaterThanEqualOrderByOccurredAtDesc(
         Instant from, Instant until, long minDurationMillis);
 
-    List<SlowQueryDocument> findByDateBetweenOrderByDateDesc(Instant from, Instant until);
+    List<SlowQueryDocument> findByOccurredAtBetweenOrderByOccurredAtDesc(Instant from, Instant until);
 }

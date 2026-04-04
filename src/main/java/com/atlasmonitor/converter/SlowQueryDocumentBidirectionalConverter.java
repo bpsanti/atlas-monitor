@@ -15,28 +15,28 @@ public class SlowQueryDocumentBidirectionalConverter implements BidirectionalCon
     @Override
     public SlowQueryDocument convertTo(SlowQuery source) {
         var doc = new SlowQueryDocument();
-        doc.setDate(source.occurredAt());
-        doc.setType(source.operationType());
+        doc.setOccurredAt(source.occurredAt());
+        doc.setOperationType(source.operationType());
         doc.setNamespace(source.namespace());
         doc.setDurationMillis(source.durationMillis());
         doc.setPlanSummary(source.shape().planSummary());
-        doc.setFilter(source.shape().filter());
+        doc.setQueryFilter(source.shape().filter());
 
         var exec = source.execution();
-        doc.setKeysExamined(exec.keysExaminedCount());
-        doc.setDocsExamined(exec.docsExaminedCount());
-        doc.setNreturned(exec.docsReturnedCount());
+        doc.setKeysExaminedCount(exec.keysExaminedCount());
+        doc.setDocsExaminedCount(exec.docsExaminedCount());
+        doc.setDocsReturnedCount(exec.docsReturnedCount());
         doc.setHasIndexCoverage(exec.hasIndexCoverage());
-        doc.setHasSort(exec.hasSortStage());
-        doc.setOperationExecutionTime(exec.executionDurationMillis());
-        doc.setResponseLength(exec.responseLengthBytes());
-        doc.setNumYields(exec.yieldsCount());
-        doc.setRemote(exec.remoteAddress());
-        doc.setCursorExhausted(exec.isCursorExhausted());
+        doc.setHasSortStage(exec.hasSortStage());
+        doc.setExecutionDurationMillis(exec.executionDurationMillis());
+        doc.setResponseLengthBytes(exec.responseLengthBytes());
+        doc.setYieldsCount(exec.yieldsCount());
+        doc.setRemoteAddress(exec.remoteAddress());
+        doc.setIsCursorExhausted(exec.isCursorExhausted());
 
         var ratios = exec.ratios();
-        doc.setDocsExaminedReturnedRatio(ratios.docsExaminedToReturnedRatio());
-        doc.setKeysExaminedReturnedRatio(ratios.keysExaminedToReturnedRatio());
+        doc.setDocsExaminedToReturnedRatio(ratios.docsExaminedToReturnedRatio());
+        doc.setKeysExaminedToReturnedRatio(ratios.keysExaminedToReturnedRatio());
 
         doc.setSyncedAt(Instant.now());
         return doc;
@@ -46,31 +46,31 @@ public class SlowQueryDocumentBidirectionalConverter implements BidirectionalCon
     public SlowQuery convertFrom(SlowQueryDocument source) {
         var shape = new SlowQueryShape(
             source.getPlanSummary(),
-            source.getFilter()
+            source.getQueryFilter()
         );
 
         var ratios = new SlowQueryEfficiencyRatios(
-            source.getDocsExaminedReturnedRatio(),
-            source.getKeysExaminedReturnedRatio()
+            source.getDocsExaminedToReturnedRatio(),
+            source.getKeysExaminedToReturnedRatio()
         );
 
         var execution = new SlowQueryExecution(
-            source.getKeysExamined(),
-            source.getDocsExamined(),
-            source.getNreturned(),
+            source.getKeysExaminedCount(),
+            source.getDocsExaminedCount(),
+            source.getDocsReturnedCount(),
             source.getHasIndexCoverage(),
-            source.getHasSort(),
+            source.getHasSortStage(),
             ratios,
-            source.getOperationExecutionTime(),
-            source.getResponseLength(),
-            source.getNumYields(),
-            source.getRemote(),
-            source.getCursorExhausted()
+            source.getExecutionDurationMillis(),
+            source.getResponseLengthBytes(),
+            source.getYieldsCount(),
+            source.getRemoteAddress(),
+            source.getIsCursorExhausted()
         );
 
         return new SlowQuery(
-            source.getDate(),
-            source.getType(),
+            source.getOccurredAt(),
+            source.getOperationType(),
             source.getNamespace(),
             source.getDurationMillis(),
             shape,

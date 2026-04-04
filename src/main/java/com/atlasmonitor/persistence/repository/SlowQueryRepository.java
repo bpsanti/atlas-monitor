@@ -20,7 +20,7 @@ public class SlowQueryRepository {
     private final ConversionService conversionService;
 
     public List<SlowQuery> findByDateRange(Instant from, Instant until, long minDurationMillis) {
-        return dao.findByDateBetweenAndDurationMillisGreaterThanEqualOrderByDateDesc(from, until, minDurationMillis)
+        return dao.findByOccurredAtBetweenAndDurationMillisGreaterThanEqualOrderByOccurredAtDesc(from, until, minDurationMillis)
             .stream()
             .map(doc -> conversionService.convert(doc, SlowQuery.class))
             .toList();
