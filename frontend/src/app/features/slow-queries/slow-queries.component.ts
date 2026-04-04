@@ -44,6 +44,7 @@ export class SlowQueriesComponent implements OnInit {
   sortColumn: 'occurredAt' | 'durationMillis' = 'occurredAt';
   sortDirection: 'asc' | 'desc' = 'desc';
   selectedQuery: SlowQueryResponse | null = null;
+  activeTab: 'details' | 'analysis' = 'details';
   analysisHtml: string | null = null;
   analysisMetadata: SlowQueryAnalysisResponse | null = null;
   analyzing = false;
@@ -144,8 +145,7 @@ export class SlowQueriesComponent implements OnInit {
         globalIdx += el.index;
         const query = this.flatQueryIndex[globalIdx];
         if (query) {
-          this.selectedQuery = query;
-          this.cdr.markForCheck();
+          this.selectQuery(query);
         }
       },
       plugins: {
@@ -194,6 +194,7 @@ export class SlowQueriesComponent implements OnInit {
 
   selectQuery(query: SlowQueryResponse): void {
     this.selectedQuery = query;
+    this.activeTab = 'details';
     this.analysisHtml = null;
     this.analysisMetadata = null;
     this.analyzing = false;
@@ -218,6 +219,7 @@ export class SlowQueriesComponent implements OnInit {
 
   closePanel(): void {
     this.selectedQuery = null;
+    this.activeTab = 'details';
     this.analysisHtml = null;
     this.analysisMetadata = null;
     this.analyzing = false;
