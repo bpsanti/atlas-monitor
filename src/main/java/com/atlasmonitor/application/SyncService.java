@@ -3,16 +3,11 @@ package com.atlasmonitor.application;
 import com.atlasmonitor.application.model.PrimaryWindow;
 import com.atlasmonitor.application.model.SlowQuery;
 import com.atlasmonitor.config.SyncProperties;
-import com.atlasmonitor.persistence.document.PrimaryWindowDocument;
-import com.atlasmonitor.persistence.document.SlowQueryDocument;
-import com.atlasmonitor.persistence.document.SyncMetadataDocument;
 import com.atlasmonitor.persistence.repository.PrimaryWindowRepository;
 import com.atlasmonitor.persistence.repository.SlowQueryRepository;
 import com.atlasmonitor.persistence.repository.SyncMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.convert.ConversionService;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +28,6 @@ public class SyncService {
     private final SlowQueryRepository slowQueryRepository;
     private final PrimaryWindowRepository primaryWindowRepository;
     private final SyncMetadataRepository syncMetadataRepository;
-    private final ConversionService conversionService;
     private final SyncProperties syncProperties;
 
     @Scheduled(fixedDelayString = "${atlas.sync.interval}")
@@ -41,23 +35,17 @@ public class SyncService {
         log.info("Starting primary window sync");
 
         Instant now = Instant.now();
-        Instant from = computeSyncFrom(PRIMARY_WINDOW_SYNC_ID, syncProperties.primaryWindowInitialLookback(), now);
+        Instant from = syncMetadataRepository.computeSyncFrom(
+            PRIMARY_WINDOW_SYNC_ID, syncProperties.primaryWindowInitialLookback(), syncProperties.syncWindowOverlap());
 
         List<PrimaryWindow> windows = primaryResolutionService.resolvePrimaryWindows("PT1H", from, now);
 
-        int inserted = 0;
         for (PrimaryWindow window : windows) {
-            PrimaryWindowDocument doc = conversionService.convert(window, PrimaryWindowDocument.class);
-            try {
-                primaryWindowRepository.insert(doc);
-                inserted++;
-            } catch (DuplicateKeyException e) {
-                // already synced
-            }
+            primaryWindowRepository.save(window);
         }
 
-        updateSyncMetadata(PRIMARY_WINDOW_SYNC_ID, now);
-        log.info("Primary window sync complete: {} new windows stored (total fetched: {})", inserted, windows.size());
+        syncMetadataRepository.updateLastSynced(PRIMARY_WINDOW_SYNC_ID, now);
+        log.info("Primary window sync complete: {} windows processed", windows.size());
     }
 
     @Scheduled(fixedDelayString = "${atlas.sync.interval}")
@@ -65,7 +53,8 @@ public class SyncService {
         log.info("Starting slow query sync");
 
         Instant now = Instant.now();
-        Instant from = computeSyncFrom(SLOW_QUERY_SYNC_ID, syncProperties.slowQueryInitialLookback(), now);
+        Instant from = syncMetadataRepository.computeSyncFrom(
+            SLOW_QUERY_SYNC_ID, syncProperties.slowQueryInitialLookback(), syncProperties.syncWindowOverlap());
         long minDurationMs = syncProperties.slowQueryMinDuration().toMillis();
         Duration batchWindow = syncProperties.slowQueryBatchWindow();
 
@@ -97,13 +86,8 @@ public class SyncService {
 
                 int batchInserted = 0;
                 for (SlowQuery query : queries) {
-                    SlowQueryDocument doc = conversionService.convert(query, SlowQueryDocument.class);
-                    doc.setProcessId(window.processId());
-                    try {
-                        slowQueryRepository.insert(doc);
+                    if (slowQueryRepository.insertIfAbsent(query, window.processId())) {
                         batchInserted++;
-                    } catch (DuplicateKeyException e) {
-                        // already synced
                     }
                 }
 
@@ -116,21 +100,7 @@ public class SyncService {
             }
         }
 
-        updateSyncMetadata(SLOW_QUERY_SYNC_ID, now);
+        syncMetadataRepository.updateLastSynced(SLOW_QUERY_SYNC_ID, now);
         log.info("Slow query sync complete: {} new queries stored (total fetched: {})", inserted, total);
-    }
-
-    private Instant computeSyncFrom(String syncId, Duration initialLookback, Instant now) {
-        return syncMetadataRepository.findById(syncId)
-            .map(meta -> meta.getLastSyncedUntil().minus(syncProperties.syncWindowOverlap()))
-            .orElse(now.minus(initialLookback));
-    }
-
-    private void updateSyncMetadata(String syncId, Instant syncedUntil) {
-        SyncMetadataDocument meta = syncMetadataRepository.findById(syncId)
-            .orElse(new SyncMetadataDocument(syncId, null, null));
-        meta.setLastSyncedUntil(syncedUntil);
-        meta.setLastSyncedAt(Instant.now());
-        syncMetadataRepository.save(meta);
     }
 }

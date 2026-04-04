@@ -4,7 +4,6 @@ import com.atlasmonitor.client.AtlasApiClient;
 import com.atlasmonitor.client.resource.AtlasSlowQueryResource;
 import com.atlasmonitor.application.model.SlowQuery;
 import com.atlasmonitor.config.SyncProperties;
-import com.atlasmonitor.persistence.document.SlowQueryDocument;
 import com.atlasmonitor.persistence.repository.SlowQueryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.ConversionService;
@@ -63,13 +62,7 @@ public class SlowQueryService {
     private List<SlowQuery> getStoredSlowQueries(Instant since, Long durationMs, Long minDurationMillis) {
         Instant until = durationMs != null ? since.plusMillis(durationMs) : Instant.now();
         long minDuration = minDurationMillis != null ? minDurationMillis : 0;
-
-        List<SlowQueryDocument> docs = slowQueryRepository
-            .findByDateBetweenAndDurationMillisGreaterThanEqualOrderByDateDesc(since, until, minDuration);
-
-        return docs.stream()
-            .map(doc -> conversionService.convert(doc, SlowQuery.class))
-            .toList();
+        return slowQueryRepository.findByDateRange(since, until, minDuration);
     }
 
     private String resolvePrimaryProcessId() {

@@ -18,7 +18,6 @@ public class QueryShapeNormalizer {
         .outputMode(org.bson.json.JsonMode.RELAXED)
         .build();
 
-
     public String computeShapeHash(String namespace, String planSummary, String filter) {
         String normalizedFilter = extractShape(filter);
         String raw = (namespace != null ? namespace : "")

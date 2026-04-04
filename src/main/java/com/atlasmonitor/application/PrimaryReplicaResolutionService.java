@@ -6,7 +6,6 @@ import com.atlasmonitor.client.resource.AtlasReplicaResource;
 import com.atlasmonitor.application.model.PrimaryWindow;
 import com.atlasmonitor.persistence.repository.PrimaryWindowRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.convert.ConversionService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -22,8 +21,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PrimaryReplicaResolutionService {
     private final AtlasApiClient atlasApiClient;
-    private final PrimaryWindowRepository primaryWindowRepository;
-    private final ConversionService conversionService;
 
     /**
     * Determines which node(s) held the PRIMARY role during [{@code start}, {@code end}]
@@ -145,14 +142,6 @@ public class PrimaryReplicaResolutionService {
                 (a, b) -> a,
                 LinkedHashMap::new
             ));
-    }
-
-    public List<PrimaryWindow> resolveHistoricalPrimaryWindows(Instant start, Instant end) {
-        return primaryWindowRepository
-            .findByFromLessThanEqualAndUntilGreaterThanEqualOrderByFromAsc(end, start)
-            .stream()
-            .map(doc -> conversionService.convert(doc, PrimaryWindow.class))
-            .toList();
     }
 
     private record ReplicaReference(String id, String hostname) {}

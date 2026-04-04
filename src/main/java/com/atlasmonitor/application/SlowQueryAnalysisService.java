@@ -6,7 +6,6 @@ import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.atlasmonitor.application.model.SlowQuery;
 import com.atlasmonitor.application.model.SlowQueryAnalysis;
-import com.atlasmonitor.persistence.document.SlowQueryAnalysisDocument;
 import com.atlasmonitor.persistence.repository.SlowQueryAnalysisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,40 +42,27 @@ public class SlowQueryAnalysisService {
     public Optional<SlowQueryAnalysis> findAnalysis(SlowQuery query) {
         String shapeHash = queryShapeNormalizer.computeShapeHash(
             query.namespace(), query.planSummary(), query.filter());
-
-        return analysisRepository.findByShapeHash(shapeHash)
-            .map(doc -> new SlowQueryAnalysis(
-                doc.getShapeHash(), doc.getNamespace(), doc.getPlanSummary(),
-                doc.getAnalysis(), doc.getAnalyzedAt(), true));
+        return analysisRepository.findByShapeHash(shapeHash);
     }
 
     public SlowQueryAnalysis analyze(SlowQuery query) {
         String shapeHash = queryShapeNormalizer.computeShapeHash(
             query.namespace(), query.planSummary(), query.filter());
 
-        Optional<SlowQueryAnalysisDocument> cached = analysisRepository.findByShapeHash(shapeHash);
+        Optional<SlowQueryAnalysis> cached = analysisRepository.findByShapeHash(shapeHash);
         if (cached.isPresent()) {
             log.info("Analysis cache hit for shape hash: {}", shapeHash);
-            SlowQueryAnalysisDocument doc = cached.get();
-            return new SlowQueryAnalysis(
-                doc.getShapeHash(), doc.getNamespace(), doc.getPlanSummary(),
-                doc.getAnalysis(), doc.getAnalyzedAt(), true);
+            return cached.get();
         }
 
         log.info("Analysis cache miss for shape hash: {}, calling Claude", shapeHash);
         String analysisText = callClaude(query);
-        Instant now = Instant.now();
 
-        var doc = new SlowQueryAnalysisDocument();
-        doc.setShapeHash(shapeHash);
-        doc.setNamespace(query.namespace());
-        doc.setPlanSummary(query.planSummary());
-        doc.setNormalizedFilter(queryShapeNormalizer.extractShape(query.filter()));
-        doc.setAnalysis(analysisText);
-        doc.setAnalyzedAt(now);
-        analysisRepository.save(doc);
+        analysisRepository.save(shapeHash, query.namespace(), query.planSummary(),
+            queryShapeNormalizer.extractShape(query.filter()), analysisText);
 
-        return new SlowQueryAnalysis(shapeHash, query.namespace(), query.planSummary(), analysisText, now, false);
+        return new SlowQueryAnalysis(shapeHash, query.namespace(), query.planSummary(),
+            analysisText, Instant.now(), false);
     }
 
     private String callClaude(SlowQuery query) {
