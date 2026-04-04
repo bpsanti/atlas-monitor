@@ -15,10 +15,9 @@ public class SyncMetadataRepository {
 
     private final SyncMetadataDao dao;
 
-    public Instant computeSyncFrom(String syncId, Duration initialLookback, Duration overlap) {
+    public Optional<Instant> getLastSyncedUntil(String syncId) {
         return dao.findById(syncId)
-            .map(meta -> meta.getLastSyncedUntil().minus(overlap))
-            .orElse(Instant.now().minus(initialLookback));
+            .map(SyncMetadataDocument::getLastSyncedUntil);
     }
 
     public void updateLastSynced(String syncId, Instant syncedUntil) {

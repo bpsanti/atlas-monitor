@@ -1,8 +1,10 @@
 package com.atlasmonitor.application;
 
+import com.atlasmonitor.application.model.IopsMetrics;
 import com.atlasmonitor.application.model.PrimaryWindow;
 import com.atlasmonitor.application.model.SlowQuery;
 import com.atlasmonitor.config.SyncProperties;
+import com.atlasmonitor.persistence.repository.IopsMetricsRepository;
 import com.atlasmonitor.persistence.repository.PrimaryWindowRepository;
 import com.atlasmonitor.persistence.repository.SlowQueryRepository;
 import com.atlasmonitor.persistence.repository.SyncMetadataRepository;
@@ -22,11 +24,14 @@ public class SyncService {
 
     private static final String SLOW_QUERY_SYNC_ID = "slow_query_sync";
     private static final String PRIMARY_WINDOW_SYNC_ID = "primary_window_sync";
+    private static final String IOPS_SYNC_ID = "iops_sync";
 
     private final SlowQueryService slowQueryService;
+    private final IopsService iopsService;
     private final PrimaryReplicaResolutionService primaryResolutionService;
     private final SlowQueryRepository slowQueryRepository;
     private final PrimaryWindowRepository primaryWindowRepository;
+    private final IopsMetricsRepository iopsMetricsRepository;
     private final SyncMetadataRepository syncMetadataRepository;
     private final SyncProperties syncProperties;
 
@@ -34,17 +39,15 @@ public class SyncService {
     public void sync() {
         syncPrimaryWindows();
         syncSlowQueries();
+        syncIops();
     }
 
     private void syncPrimaryWindows() {
         log.info("Starting primary window sync");
 
         Instant now = Instant.now();
-        Instant from = syncMetadataRepository.computeSyncFrom(
-            PRIMARY_WINDOW_SYNC_ID,
-            syncProperties.primaryWindowInitialLookback(),
-            syncProperties.syncWindowOverlap()
-        );
+        Instant from = syncMetadataRepository.getLastSyncedUntil(PRIMARY_WINDOW_SYNC_ID)
+            .orElse(now.minus(syncProperties.primaryWindowInitialLookback()));
 
         List<PrimaryWindow> windows = primaryResolutionService.resolvePrimaryWindows("PT1H", from, now);
         for (PrimaryWindow window : windows) {
@@ -59,11 +62,14 @@ public class SyncService {
         log.info("Starting slow query sync");
 
         Instant now = Instant.now();
-        Instant from = syncMetadataRepository.computeSyncFrom(
-            SLOW_QUERY_SYNC_ID,
-            syncProperties.slowQueryInitialLookback(),
-            syncProperties.syncWindowOverlap()
-        );
+        Instant from = syncMetadataRepository.getLastSyncedUntil(SLOW_QUERY_SYNC_ID)
+            .orElse(now.minus(syncProperties.slowQueryInitialLookback()));
+
+        if (!from.isBefore(now)) {
+            log.info("Slow query sync skipped: already up to date");
+            return;
+        }
+
         long minDurationMs = syncProperties.slowQueryMinDuration().toMillis();
         Duration batchWindow = syncProperties.slowQueryBatchWindow();
 
@@ -75,21 +81,19 @@ public class SyncService {
 
         for (int index = 0; index < primaryWindows.size(); index++) {
             PrimaryWindow window = primaryWindows.get(index);
-            log.info("Processing primary window {}/{}: {} [{} - {}]",
-                index + 1,
-                primaryWindows.size(),
-                window.processId(),
-                window.from(),
-                window.until()
-            );
+            Instant windowFrom = window.from().isBefore(from) ? from : window.from();
+            Instant windowUntil = window.until().isAfter(now) ? now : window.until();
 
-            Instant batchStart = window.from();
+            log.info("Processing primary window {}/{}: {} [{} - {}]",
+                index + 1, primaryWindows.size(), window.processId(), windowFrom, windowUntil);
+
+            Instant batchStart = windowFrom;
             int batchNum = 0;
 
-            while (batchStart.isBefore(window.until())) {
+            while (batchStart.isBefore(windowUntil)) {
                 Instant batchEnd = batchStart.plus(batchWindow);
-                if (batchEnd.isAfter(window.until())) {
-                    batchEnd = window.until();
+                if (batchEnd.isAfter(windowUntil)) {
+                    batchEnd = windowUntil;
                 }
                 batchNum++;
 
@@ -113,5 +117,46 @@ public class SyncService {
 
         syncMetadataRepository.updateLastSynced(SLOW_QUERY_SYNC_ID, now);
         log.info("Slow query sync complete: {} new queries stored (total fetched: {})", inserted, total);
+    }
+
+    private void syncIops() {
+        log.info("Starting IOPS sync");
+
+        Instant now = Instant.now();
+        Instant from = syncMetadataRepository.getLastSyncedUntil(IOPS_SYNC_ID)
+            .orElse(now.minus(syncProperties.iopsInitialLookback()));
+
+        if (!from.isBefore(now)) {
+            log.info("IOPS sync skipped: already up to date");
+            return;
+        }
+
+        List<PrimaryWindow> primaryWindows = primaryWindowRepository.findOverlapping(from, now);
+        log.info("Found {} primary windows for IOPS range [{} - {}]", primaryWindows.size(), from, now);
+
+        int inserted = 0;
+
+        for (int index = 0; index < primaryWindows.size(); index++) {
+            PrimaryWindow window = primaryWindows.get(index);
+            Instant windowFrom = window.from().isBefore(from) ? from : window.from();
+            Instant windowUntil = window.until().isAfter(now) ? now : window.until();
+
+            log.info("Syncing IOPS for primary window {}/{}: {} [{} - {}]",
+                index + 1, primaryWindows.size(), window.processId(), windowFrom, windowUntil);
+
+            IopsMetrics metrics = iopsService.queryIopsForNode(
+                window.processId(),
+                window.hostname(),
+                "REPLICA_PRIMARY",
+                "PT1H",
+                windowFrom,
+                windowUntil
+            );
+
+            inserted += iopsMetricsRepository.insertAll(List.of(metrics));
+        }
+
+        syncMetadataRepository.updateLastSynced(IOPS_SYNC_ID, now);
+        log.info("IOPS sync complete: {} entries stored", inserted);
     }
 }

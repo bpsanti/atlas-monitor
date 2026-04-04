@@ -9,10 +9,12 @@ import com.atlasmonitor.application.model.IopsPeak;
 import com.atlasmonitor.application.model.IopsMetricSeries;
 import com.atlasmonitor.application.model.IopsMetricPeak;
 import com.atlasmonitor.application.model.ProcessNode;
+import com.atlasmonitor.persistence.repository.IopsMetricsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -24,8 +26,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class IopsService {
 
+    private static final Duration ATLAS_RETENTION = Duration.ofDays(60);
+
     private final AtlasApiClient atlasApiClient;
     private final PrimaryReplicaResolutionService primaryResolutionService;
+    private final IopsMetricsRepository iopsMetricsRepository;
     private final ConversionService conversionService;
 
     public List<ProcessNode> listProcesses() {
@@ -55,18 +60,17 @@ public class IopsService {
         Instant start,
         Instant end
     ) {
+        if ("PT1H".equals(granularity)) {
+            List<IopsMetrics> stored = iopsMetricsRepository.findByDateRange(start, end);
+            return mergeWindows(stored, "PT1H", start, end);
+        }
+
         List<IopsMetrics> windows = primaryResolutionService.resolvePrimaryWindows(granularity, start, end)
             .stream()
             .map(w -> queryIopsForNode(w.processId(), w.hostname(), "REPLICA_PRIMARY",
                 granularity, w.from(), w.until()))
             .toList();
 
-        if (windows.isEmpty()) {
-            throw new NoSuchElementException("No primary windows found for the given time range");
-        }
-        if (windows.size() == 1) {
-            return windows.get(0);
-        }
         return mergeWindows(windows, granularity, start, end);
     }
 
@@ -99,6 +103,13 @@ public class IopsService {
         Instant start,
         Instant end
     ) {
+        if (windows.isEmpty()) {
+            throw new NoSuchElementException("No primary windows found for the given time range");
+        }
+        if (windows.size() == 1) {
+            return windows.get(0);
+        }
+
         String processIds = windows.stream().map(IopsMetrics::processId).distinct()
             .collect(Collectors.joining(", "));
         String hostnames = windows.stream().map(IopsMetrics::hostname).distinct()
@@ -147,7 +158,7 @@ public class IopsService {
         return new IopsMetricSeries(allPoints, new IopsMetricPeak(peakPoint.timestamp(), peakPoint.value()));
     }
 
-    private IopsMetrics queryIopsForNode(
+    public IopsMetrics queryIopsForNode(
         String processId,
         String hostname,
         String role,
