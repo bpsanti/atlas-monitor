@@ -5,10 +5,8 @@ import com.atlasmonitor.client.resource.AtlasMetricResource;
 import com.atlasmonitor.client.resource.AtlasMetricWrapperResource;
 import com.atlasmonitor.application.model.IopsDataPoint;
 import com.atlasmonitor.application.model.IopsMetrics;
-import com.atlasmonitor.application.model.IopsPeak;
 import com.atlasmonitor.application.model.IopsMetricSeries;
 import com.atlasmonitor.application.model.IopsMetricPeak;
-import com.atlasmonitor.application.model.ProcessNode;
 import com.atlasmonitor.persistence.repository.IopsMetricsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.ConversionService;
@@ -26,24 +24,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class IopsService {
 
-    private static final Duration ATLAS_RETENTION = Duration.ofDays(60);
-
     private final AtlasApiClient atlasApiClient;
     private final PrimaryReplicaResolutionService primaryResolutionService;
     private final IopsMetricsRepository iopsMetricsRepository;
     private final ConversionService conversionService;
-
-    public List<ProcessNode> listProcesses() {
-        return atlasApiClient.listReplicas().results().stream()
-            .map(p -> conversionService.convert(p, ProcessNode.class))
-            .toList();
-    }
-
-    public List<String> listDisks(String processId) {
-        return atlasApiClient.listDisks(processId).results().stream()
-            .map(d -> d.partitionName())
-            .toList();
-    }
 
     public List<IopsMetrics> queryIops(
         String granularity,
@@ -72,29 +56,6 @@ public class IopsService {
             .toList();
 
         return mergeWindows(windows, granularity, start, end);
-    }
-
-    public IopsPeak queryPrimaryIopsPeak(
-        String granularity,
-        Instant start,
-        Instant end
-    ) {
-        IopsMetrics full = queryPrimaryIops(granularity, start, end);
-        return new IopsPeak(
-            full.processId(),
-            full.hostname(),
-            full.currentRole(),
-            full.partitionName(),
-            full.granularity(),
-            full.start(),
-            full.end(),
-            peakOf(full.read()),
-            peakOf(full.write()),
-            peakOf(full.total()),
-            peakOf(full.maxRead()),
-            peakOf(full.maxWrite()),
-            peakOf(full.maxTotal())
-        );
     }
 
     private IopsMetrics mergeWindows(
@@ -196,10 +157,6 @@ public class IopsService {
             .findFirst()
             .orElseThrow(() -> new NoSuchElementException(
                 "No disk partition found for process: " + processId));
-    }
-
-    private IopsMetricPeak peakOf(IopsMetricSeries series) {
-        return series != null ? series.peak() : null;
     }
 
     private IopsMetricSeries convertMetric(AtlasMetricResource metric) {
