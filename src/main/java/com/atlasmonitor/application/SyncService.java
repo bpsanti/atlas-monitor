@@ -50,12 +50,22 @@ public class SyncService {
             .orElse(now.minus(syncProperties.primaryWindowInitialLookback()));
 
         List<PrimaryWindow> windows = primaryResolutionService.resolvePrimaryWindows("PT1H", from, now);
+        if (windows.isEmpty()) {
+            log.info("Primary window sync skipped: no windows found");
+            return;
+        }
+
         for (PrimaryWindow window : windows) {
             primaryWindowRepository.save(window);
         }
 
-        syncMetadataRepository.updateLastSynced(PRIMARY_WINDOW_SYNC_ID, now);
-        log.info("Primary window sync complete: {} windows processed", windows.size());
+        Instant lastUntil = windows.stream()
+            .map(PrimaryWindow::until)
+            .max(Instant::compareTo)
+            .orElse(from);
+
+        syncMetadataRepository.updateLastSynced(PRIMARY_WINDOW_SYNC_ID, lastUntil);
+        log.info("Primary window sync complete: {} windows processed, synced until {}", windows.size(), lastUntil);
     }
 
     private void syncSlowQueries() {
@@ -78,6 +88,7 @@ public class SyncService {
 
         int inserted = 0;
         int total = 0;
+        Instant lastSyncedUntil = from;
 
         for (int index = 0; index < primaryWindows.size(); index++) {
             PrimaryWindow window = primaryWindows.get(index);
@@ -108,6 +119,9 @@ public class SyncService {
 
                 total += queries.size();
                 inserted += batchInserted;
+                if (batchEnd.isAfter(lastSyncedUntil)) {
+                    lastSyncedUntil = batchEnd;
+                }
                 log.info("  Batch {} [{} - {}]: fetched {}, inserted {} (duplicates skipped: {})",
                     batchNum, batchStart, batchEnd, queries.size(), batchInserted, queries.size() - batchInserted);
 
@@ -115,8 +129,9 @@ public class SyncService {
             }
         }
 
-        syncMetadataRepository.updateLastSynced(SLOW_QUERY_SYNC_ID, now);
-        log.info("Slow query sync complete: {} new queries stored (total fetched: {})", inserted, total);
+        syncMetadataRepository.updateLastSynced(SLOW_QUERY_SYNC_ID, lastSyncedUntil);
+        log.info("Slow query sync complete: {} new queries stored (total fetched: {}), synced until {}",
+            inserted, total, lastSyncedUntil);
     }
 
     private void syncIops() {
@@ -135,6 +150,7 @@ public class SyncService {
         log.info("Found {} primary windows for IOPS range [{} - {}]", primaryWindows.size(), from, now);
 
         int inserted = 0;
+        Instant lastSyncedUntil = from;
 
         for (int index = 0; index < primaryWindows.size(); index++) {
             PrimaryWindow window = primaryWindows.get(index);
@@ -153,10 +169,24 @@ public class SyncService {
                 windowUntil
             );
 
+            if (!hasDataPoints(metrics)) {
+                log.info("  Skipping: no data points for window [{} - {}]", windowFrom, windowUntil);
+                continue;
+            }
+
             inserted += iopsMetricsRepository.insertAll(List.of(metrics));
+            if (metrics.end().isAfter(lastSyncedUntil)) {
+                lastSyncedUntil = metrics.end();
+            }
         }
 
-        syncMetadataRepository.updateLastSynced(IOPS_SYNC_ID, now);
-        log.info("IOPS sync complete: {} entries stored", inserted);
+        if (inserted > 0) {
+            syncMetadataRepository.updateLastSynced(IOPS_SYNC_ID, lastSyncedUntil);
+        }
+        log.info("IOPS sync complete: {} entries stored, synced until {}", inserted, lastSyncedUntil);
+    }
+
+    private boolean hasDataPoints(IopsMetrics metrics) {
+        return metrics.read() != null && !metrics.read().dataPoints().isEmpty();
     }
 }
