@@ -1,5 +1,6 @@
 package com.atlasmonitor.application;
 
+import com.atlasmonitor.application.model.IopsMetricSeries;
 import com.atlasmonitor.application.model.IopsMetrics;
 import com.atlasmonitor.application.model.PrimaryWindow;
 import com.atlasmonitor.application.model.SlowQuery;
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -187,6 +190,11 @@ public class SyncService {
     }
 
     private boolean hasDataPoints(IopsMetrics metrics) {
-        return metrics.read() != null && !metrics.read().dataPoints().isEmpty();
+        var dataPoints = Optional.ofNullable(metrics.read())
+            .map(IopsMetricSeries::dataPoints)
+            .orElse(Collections.emptyList());
+
+        return dataPoints.stream()
+            .anyMatch(it -> it.value() != null);
     }
 }

@@ -11,7 +11,10 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @Repository
 @RequiredArgsConstructor
@@ -36,13 +39,42 @@ public class IopsMetricsRepository {
         var documents = metricsList.stream()
             .map(m -> conversionService.convert(m, IopsMetricsDocument.class))
             .toList();
+        var mergedDocuments = mergeDocuments(documents);
 
         try {
             var bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, IopsMetricsDocument.class);
-            bulk.insert(documents);
+            bulk.insert(mergedDocuments);
             return bulk.execute().getInsertedCount();
         } catch (MongoBulkWriteException e) {
             return e.getWriteResult().getInsertedCount();
         }
+    }
+
+    private List<IopsMetricsDocument> mergeDocuments(List<IopsMetricsDocument> documents) {
+        var lastSavedDocument = dao.findTopByOrderByEndDesc().orElse(null);
+        if (lastSavedDocument == null) {
+            return documents;
+        }
+
+        var finalDocuments = new ArrayList<IopsMetricsDocument>();
+        for (var document : documents) {
+            if (Objects.equals(lastSavedDocument.getProcessId(), document.getProcessId())) {
+                lastSavedDocument.getRead().getDataPoints().addAll(document.getRead().getDataPoints());
+                lastSavedDocument.getWrite().getDataPoints().addAll(document.getWrite().getDataPoints());
+                lastSavedDocument.getTotal().getDataPoints().addAll(document.getTotal().getDataPoints());
+                lastSavedDocument.getMaxRead().getDataPoints().addAll(document.getMaxRead().getDataPoints());
+                lastSavedDocument.getMaxWrite().getDataPoints().addAll(document.getMaxWrite().getDataPoints());
+                lastSavedDocument.getMaxTotal().getDataPoints().addAll(document.getMaxTotal().getDataPoints());
+                lastSavedDocument.setEnd(document.getEnd());
+                lastSavedDocument.setSyncedAt(document.getSyncedAt());
+                finalDocuments.add(lastSavedDocument);
+
+                continue;
+            }
+
+            finalDocuments.add(document);
+        }
+
+        return finalDocuments;
     }
 }
