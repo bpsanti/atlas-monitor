@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { SlowQueryResponse, SlowQueryAnalysisResponse } from '../models/slow-query.model';
+import { QueryShapeStats } from '../models/query-shape.model';
 
 @Injectable({ providedIn: 'root' })
 export class SlowQueryService {
@@ -17,6 +18,19 @@ export class SlowQueryService {
     if (endDate) params = params.set('endDate', endDate);
     if (minDurationMillis != null) params = params.set('minDurationMillis', minDurationMillis);
     return this.http.get<SlowQueryResponse[]>('/api/v1/slow-queries', { params });
+  }
+
+  getShapeSample(shapeHash: string): Observable<SlowQueryResponse | null> {
+    return this.http.get(`/api/v1/slow-queries/shapes/${shapeHash}/sample`, { observe: 'response' }).pipe(
+      map(response => response.status === 204 ? null : response.body as SlowQueryResponse)
+    );
+  }
+
+  getQueryShapeStats(startDate: string, endDate: string): Observable<QueryShapeStats[]> {
+    const params = new HttpParams()
+      .set('startDate', startDate)
+      .set('endDate', endDate);
+    return this.http.get<QueryShapeStats[]>('/api/v1/slow-queries/shapes', { params });
   }
 
   findAnalysis(query: SlowQueryResponse): Observable<SlowQueryAnalysisResponse | null> {

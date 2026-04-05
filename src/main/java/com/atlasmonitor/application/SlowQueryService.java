@@ -2,6 +2,7 @@ package com.atlasmonitor.application;
 
 import com.atlasmonitor.client.AtlasApiClient;
 import com.atlasmonitor.client.resource.AtlasSlowQueryResource;
+import com.atlasmonitor.application.model.QueryShapeStats;
 import com.atlasmonitor.application.model.SlowQuery;
 import com.atlasmonitor.config.SyncProperties;
 import com.atlasmonitor.persistence.repository.SlowQueryRepository;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +37,15 @@ public class SlowQueryService {
         }
 
         return slowQueryRepository.findByDateRange(startDate, endDate, minDurationMillis);
+    }
+
+    public List<QueryShapeStats> getQueryShapeStats(Instant startDate, Instant endDate) {
+        Instant until = endDate != null ? endDate : Instant.now();
+        return slowQueryRepository.aggregateByShape(startDate, until);
+    }
+
+    public Optional<SlowQuery> findSampleByShapeHash(String shapeHash) {
+        return slowQueryRepository.findSampleByShapeHash(shapeHash);
     }
 
     public List<SlowQuery> getSlowQueriesFromAtlas(

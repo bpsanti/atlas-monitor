@@ -4,7 +4,11 @@ import org.bson.Document;
 import org.bson.json.JsonWriterSettings;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 
 @Component
@@ -13,6 +17,31 @@ public class QueryShapeNormalizer {
     private static final JsonWriterSettings JSON_SETTINGS = JsonWriterSettings.builder()
         .outputMode(org.bson.json.JsonMode.RELAXED)
         .build();
+
+    public String computeShapeHash(String namespace, String normalizedFilter) {
+        return sha256(
+            (namespace != null ? namespace : "")
+            + "|" + (normalizedFilter != null ? normalizedFilter : "")
+        );
+    }
+
+    public String computeAnalysisHash(String namespace, String planSummary, String normalizedFilter) {
+        return sha256(
+            (namespace != null ? namespace : "")
+            + "|" + (planSummary != null ? planSummary : "")
+            + "|" + (normalizedFilter != null ? normalizedFilter : "")
+        );
+    }
+
+    private String sha256(String input) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256");
+            var hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public String extractShape(String filterJson) {
         if (filterJson == null || filterJson.isBlank()) {

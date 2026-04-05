@@ -2,12 +2,15 @@ package com.atlasmonitor.api;
 
 import com.atlasmonitor.api.resource.IopsMetricsResource;
 import com.atlasmonitor.application.IopsService;
+import com.atlasmonitor.application.PrimaryReplicaResolutionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @RestController
@@ -15,8 +18,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class IopsController {
 
+    private final PrimaryReplicaResolutionService primaryResolutionService;
     private final IopsService iopsService;
     private final ConversionService conversionService;
+
+    @GetMapping("test")
+    public void test() {
+        var today = LocalDate.of(2026, 4, 5);
+        var start = today.atStartOfDay(ZoneId.of("GMT")).toInstant();
+        var end = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+
+        primaryResolutionService.resolvePrimaryWindows("PT1H", start, end);
+    }
 
     @GetMapping("/iops")
     public List<IopsMetricsResource> queryIops(

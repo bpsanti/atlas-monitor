@@ -8,11 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.Optional;
 
 @Service
@@ -25,12 +21,12 @@ public class SlowQueryAnalysisService {
     private final QueryShapeNormalizer queryShapeNormalizer;
 
     public Optional<SlowQueryAnalysis> findAnalysis(SlowQuery query) {
-        var shapeHash = computeShapeHash(query);
-        return analysisRepository.findByShapeHash(shapeHash);
+        var analysisHash = computeAnalysisHash(query);
+        return analysisRepository.findByShapeHash(analysisHash);
     }
 
     public SlowQueryAnalysis analyze(SlowQuery query) {
-        var shapeHash = computeShapeHash(query);
+        var shapeHash = computeAnalysisHash(query);
         var cached = analysisRepository.findByShapeHash(shapeHash);
 
         if (cached.isPresent()) {
@@ -40,12 +36,13 @@ public class SlowQueryAnalysisService {
 
         log.info("Analysis cache miss for shape hash: {}, calling Claude", shapeHash);
         var analysisText = claudeClient.analyzeSlowQuery(query);
+        var normalizedFilter = queryShapeNormalizer.extractShape(query.shape().filter());
 
         analysisRepository.save(
             shapeHash,
             query.namespace(),
             query.shape().planSummary(),
-            queryShapeNormalizer.extractShape(query.shape().filter()),
+            normalizedFilter,
             analysisText
         );
 
@@ -59,24 +56,8 @@ public class SlowQueryAnalysisService {
         );
     }
 
-    private String computeShapeHash(SlowQuery query) {
-        var namespace = Optional.ofNullable(query.namespace()).orElse("");
-        var planSummary = Optional.ofNullable(query.shape().planSummary()).orElse("");
-        var normalizedFilter = Optional.ofNullable(query.shape().filter())
-            .map(queryShapeNormalizer::extractShape)
-            .orElse("");
-
-        var raw = namespace + "|" + planSummary + "|" + normalizedFilter;
-        return sha256(raw);
-    }
-
-    private String sha256(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+    private String computeAnalysisHash(SlowQuery query) {
+        var normalizedFilter = queryShapeNormalizer.extractShape(query.shape().filter());
+        return queryShapeNormalizer.computeAnalysisHash(query.namespace(), query.shape().planSummary(), normalizedFilter);
     }
 }

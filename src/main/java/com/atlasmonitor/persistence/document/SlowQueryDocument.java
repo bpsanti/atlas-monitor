@@ -44,6 +44,10 @@ public class SlowQueryDocument {
     private Boolean isCursorExhausted;
     private String queryFilter;
 
+    @Indexed
+    private String shapeHash;
+    private String normalizedFilter;
+
     private String processId;
     private Instant syncedAt;
 }

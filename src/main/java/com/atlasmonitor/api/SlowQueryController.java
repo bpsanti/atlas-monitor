@@ -1,5 +1,6 @@
 package com.atlasmonitor.api;
 
+import com.atlasmonitor.api.resource.QueryShapeStatsResource;
 import com.atlasmonitor.api.resource.SlowQueryAnalysisResource;
 import com.atlasmonitor.api.resource.SlowQueryResource;
 import com.atlasmonitor.application.model.SlowQuery;
@@ -34,6 +35,26 @@ public class SlowQueryController {
         return slowQueryService.getSlowQueries(startDate, endDate, minDurationMillis).stream()
             .map(q -> conversionService.convert(q, SlowQueryResource.class))
             .toList();
+    }
+
+    @GetMapping("/slow-queries/shapes")
+    public List<QueryShapeStatsResource> getQueryShapeStats(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate
+    ) {
+        return slowQueryService.getQueryShapeStats(startDate, endDate).stream()
+            .map(s -> new QueryShapeStatsResource(
+                s.shapeHash(), s.namespace(), s.planSummary(), s.normalizedFilter(),
+                s.queryCount(), s.totalDurationMillis(), s.avgDurationMillis(),
+                s.maxDurationMillis(), s.minDurationMillis()))
+            .toList();
+    }
+
+    @GetMapping("/slow-queries/shapes/{shapeHash}/sample")
+    public ResponseEntity<SlowQueryResource> getShapeSample(@PathVariable String shapeHash) {
+        return slowQueryService.findSampleByShapeHash(shapeHash)
+            .map(q -> ResponseEntity.ok(conversionService.convert(q, SlowQueryResource.class)))
+            .orElse(ResponseEntity.noContent().build());
     }
 
     @PostMapping("/slow-queries/analysis")
