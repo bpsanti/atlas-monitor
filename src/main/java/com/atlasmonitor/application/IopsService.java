@@ -116,7 +116,7 @@ public class IopsService {
             .max(Comparator.comparingDouble(IopsDataPoint::value))
             .orElseThrow();
 
-        return new IopsMetricSeries(allPoints, new IopsMetricPeak(peakPoint.timestamp(), peakPoint.value()));
+        return new IopsMetricSeries(nonNull, new IopsMetricPeak(peakPoint.timestamp(), peakPoint.value()));
     }
 
     public IopsMetrics queryIopsForNode(

@@ -36,14 +36,17 @@ public class IopsMetricsRepository {
     }
 
     private IopsMetrics trimToRange(IopsMetrics metrics, Instant start, Instant end) {
+        var metricsStart = metrics.start().isBefore(start) ? start : metrics.start();
+        var metricsEnd = metrics.end().isAfter(end) ? end : metrics.end();
+
         return new IopsMetrics(
             metrics.processId(),
             metrics.hostname(),
             metrics.currentRole(),
             metrics.partitionName(),
             metrics.granularity(),
-            start,
-            end,
+            metricsStart,
+            metricsEnd,
             metrics.roleChanges(),
             trimSeries(metrics.read(), start, end),
             trimSeries(metrics.write(), start, end),
