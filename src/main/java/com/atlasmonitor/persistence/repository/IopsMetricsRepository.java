@@ -1,5 +1,8 @@
 package com.atlasmonitor.persistence.repository;
 
+import com.atlasmonitor.application.model.IopsDataPoint;
+import com.atlasmonitor.application.model.IopsMetricPeak;
+import com.atlasmonitor.application.model.IopsMetricSeries;
 import com.atlasmonitor.application.model.IopsMetrics;
 import com.atlasmonitor.persistence.dao.IopsMetricsDao;
 import com.atlasmonitor.persistence.document.IopsMetricsDocument;
@@ -28,7 +31,45 @@ public class IopsMetricsRepository {
         return dao.findByStartLessThanEqualAndEndGreaterThanEqualOrderByStartAsc(end, start)
             .stream()
             .map(doc -> conversionService.convert(doc, IopsMetrics.class))
+            .map(metrics -> trimToRange(metrics, start, end))
             .toList();
+    }
+
+    private IopsMetrics trimToRange(IopsMetrics metrics, Instant start, Instant end) {
+        return new IopsMetrics(
+            metrics.processId(),
+            metrics.hostname(),
+            metrics.currentRole(),
+            metrics.partitionName(),
+            metrics.granularity(),
+            start,
+            end,
+            metrics.roleChanges(),
+            trimSeries(metrics.read(), start, end),
+            trimSeries(metrics.write(), start, end),
+            trimSeries(metrics.total(), start, end),
+            trimSeries(metrics.maxRead(), start, end),
+            trimSeries(metrics.maxWrite(), start, end),
+            trimSeries(metrics.maxTotal(), start, end)
+        );
+    }
+
+    private IopsMetricSeries trimSeries(IopsMetricSeries series, Instant start, Instant end) {
+        if (series == null) return null;
+
+        var filtered = series.dataPoints().stream()
+            .filter(dp -> dp.timestamp() != null
+                && !dp.timestamp().isBefore(start)
+                && !dp.timestamp().isAfter(end))
+            .toList();
+
+        var peak = filtered.stream()
+            .filter(dp -> dp.value() != null)
+            .max(java.util.Comparator.comparingDouble(IopsDataPoint::value))
+            .map(dp -> new IopsMetricPeak(dp.timestamp(), dp.value()))
+            .orElse(null);
+
+        return new IopsMetricSeries(filtered, peak);
     }
 
     public int insertAll(List<IopsMetrics> metricsList) {
@@ -41,13 +82,7 @@ public class IopsMetricsRepository {
             .toList();
         var mergedDocuments = mergeDocuments(documents);
 
-        try {
-            var bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, IopsMetricsDocument.class);
-            bulk.insert(mergedDocuments);
-            return bulk.execute().getInsertedCount();
-        } catch (MongoBulkWriteException e) {
-            return e.getWriteResult().getInsertedCount();
-        }
+        return dao.saveAll(mergedDocuments).size();
     }
 
     private List<IopsMetricsDocument> mergeDocuments(List<IopsMetricsDocument> documents) {
