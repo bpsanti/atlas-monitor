@@ -1,0 +1,213 @@
+<div class="dashboard">
+  <header class="dashboard-header">
+    <h1>Atlas Monitor — PRIMARY IOPS</h1>
+  </header>
+
+  <form class="controls" (ngSubmit)="load()">
+    <div class="control-group">
+      <label for="granularity">Granularity</label>
+      <select id="granularity" [(ngModel)]="selectedGranularity" name="granularity">
+        @for (g of granularities; track g) {
+          <option [value]="g">{{ g }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="startDate">From</label>
+      <input
+        id="startDate"
+        type="datetime-local"
+        [(ngModel)]="startDate"
+        name="startDate"
+      />
+    </div>
+
+    <div class="control-group">
+      <label for="endDate">To</label>
+      <input
+        id="endDate"
+        type="datetime-local"
+        [(ngModel)]="endDate"
+        name="endDate"
+      />
+    </div>
+
+    <div class="control-group">
+      <label for="locale">Locale</label>
+      <select id="locale" [(ngModel)]="locale" name="locale" (ngModelChange)="onLocaleChange()">
+        <option value="en-US">en-US</option>
+        <option value="pt-BR">pt-BR</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>Metrics</label>
+      <div class="metric-toggles">
+        <label class="toggle" [class.active]="showRead">
+          <input type="checkbox" [(ngModel)]="showRead" name="showRead" (ngModelChange)="onVisibilityChange()" />
+          Read
+        </label>
+        <label class="toggle" [class.active]="showWrite">
+          <input type="checkbox" [(ngModel)]="showWrite" name="showWrite" (ngModelChange)="onVisibilityChange()" />
+          Write
+        </label>
+        <label class="toggle" [class.active]="showTotal">
+          <input type="checkbox" [(ngModel)]="showTotal" name="showTotal" (ngModelChange)="onVisibilityChange()" />
+          Total
+        </label>
+      </div>
+    </div>
+
+    <button type="submit" [disabled]="loading">
+      {{ loading ? 'Loading…' : 'Refresh' }}
+    </button>
+  </form>
+
+  @if (error) {
+    <div class="error-banner">{{ error }}</div>
+  }
+
+  @if (loading) {
+    <div class="loading">Loading IOPS data…</div>
+  }
+
+  @if (!loading && !card && !replicaCards.length && !error) {
+    <div class="empty">No data returned for the selected range.</div>
+  }
+
+  @if (card) {
+    <h2 class="section-title">Primary <span class="hint">Click chart to view slow queries</span></h2>
+    <div class="card">
+      <div class="card-header">
+        <span class="hostname">{{ card.response.hostname }}</span>
+        <span class="partition">{{ card.response.partitionName }}</span>
+        <span class="window">
+          {{ formatDate(card.response.start) }} – {{ formatDate(card.response.end) }}
+        </span>
+      </div>
+
+      <div class="chart-container clickable">
+        <canvas
+          baseChart
+          [data]="card.chartData"
+          [options]="card.chartOptions"
+          [plugins]="card.plugins"
+          [type]="chartType"
+        ></canvas>
+      </div>
+
+      <div class="peak-row">
+        <div class="peak-item read">
+          <span class="peak-label">Read Peak</span>
+          <span class="peak-value">
+            {{ formatPeak(card.response.read.peak?.value, card.response.read.peak?.timestamp) }}
+          </span>
+        </div>
+        <div class="peak-item write">
+          <span class="peak-label">Write Peak</span>
+          <span class="peak-value">
+            {{ formatPeak(card.response.write.peak?.value, card.response.write.peak?.timestamp) }}
+          </span>
+        </div>
+        <div class="peak-item total">
+          <span class="peak-label">Total Peak</span>
+          <span class="peak-value">
+            {{ formatPeak(card.response.total.peak?.value, card.response.total.peak?.timestamp) }}
+          </span>
+        </div>
+      </div>
+
+      <div class="peak-row max-row">
+        <div class="peak-item read">
+          <span class="peak-label">Max Read</span>
+          <span class="peak-value">
+            {{ formatPeak(card.response.maxRead.peak?.value, card.response.maxRead.peak?.timestamp) }}
+          </span>
+        </div>
+        <div class="peak-item write">
+          <span class="peak-label">Max Write</span>
+          <span class="peak-value">
+            {{ formatPeak(card.response.maxWrite.peak?.value, card.response.maxWrite.peak?.timestamp) }}
+          </span>
+        </div>
+        <div class="peak-item total">
+          <span class="peak-label">Max Total</span>
+          <span class="peak-value">
+            {{ formatPeak(card.response.maxTotal.peak?.value, card.response.maxTotal.peak?.timestamp) }}
+          </span>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (replicaCards.length) {
+    <h2 class="section-title">All Replicas</h2>
+    <div class="replica-grid">
+      @for (rc of replicaCards; track rc.response.processId) {
+        <div class="card">
+          <div class="card-header">
+            <span class="hostname">{{ rc.response.hostname }}</span>
+            <span class="partition">{{ rc.response.partitionName }}</span>
+            <span class="role-badge">{{ rc.response.currentRole }}</span>
+            <span class="window">
+              {{ formatDate(rc.response.start) }} – {{ formatDate(rc.response.end) }}
+            </span>
+          </div>
+
+          <div class="chart-container">
+            <canvas
+              baseChart
+              [data]="rc.chartData"
+              [options]="rc.chartOptions"
+              [plugins]="rc.plugins"
+              [type]="chartType"
+            ></canvas>
+          </div>
+
+          <div class="peak-row">
+            <div class="peak-item read">
+              <span class="peak-label">Read Peak</span>
+              <span class="peak-value">
+                {{ formatPeak(rc.response.read.peak?.value, rc.response.read.peak?.timestamp) }}
+              </span>
+            </div>
+            <div class="peak-item write">
+              <span class="peak-label">Write Peak</span>
+              <span class="peak-value">
+                {{ formatPeak(rc.response.write.peak?.value, rc.response.write.peak?.timestamp) }}
+              </span>
+            </div>
+            <div class="peak-item total">
+              <span class="peak-label">Total Peak</span>
+              <span class="peak-value">
+                {{ formatPeak(rc.response.total.peak?.value, rc.response.total.peak?.timestamp) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="peak-row max-row">
+            <div class="peak-item read">
+              <span class="peak-label">Max Read</span>
+              <span class="peak-value">
+                {{ formatPeak(rc.response.maxRead.peak?.value, rc.response.maxRead.peak?.timestamp) }}
+              </span>
+            </div>
+            <div class="peak-item write">
+              <span class="peak-label">Max Write</span>
+              <span class="peak-value">
+                {{ formatPeak(rc.response.maxWrite.peak?.value, rc.response.maxWrite.peak?.timestamp) }}
+              </span>
+            </div>
+            <div class="peak-item total">
+              <span class="peak-label">Max Total</span>
+              <span class="peak-value">
+                {{ formatPeak(rc.response.maxTotal.peak?.value, rc.response.maxTotal.peak?.timestamp) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
