@@ -23,8 +23,18 @@ export interface SlowQueryResponse {
   execution: QueryExecutionResponse;
 }
 
+export interface CodeAnalysisResponse {
+  filePath: string;
+  repositoryName: string;
+  htmlUrl: string;
+  lineNumber: number | null;
+  analysis: string;
+}
+
 export interface SlowQueryAnalysisResponse {
   analysis: string;
+  databaseAnalysis: string;
+  codeAnalyses: CodeAnalysisResponse[];
   planSummary: string | null;
   analyzedAt: string;
   cached: boolean;

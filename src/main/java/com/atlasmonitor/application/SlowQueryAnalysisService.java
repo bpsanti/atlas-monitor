@@ -25,17 +25,22 @@ public class SlowQueryAnalysisService {
         return analysisRepository.findByShapeHash(analysisHash);
     }
 
-    public SlowQueryAnalysis analyze(SlowQuery query) {
+    public SlowQueryAnalysis analyze(SlowQuery query, boolean force) {
         var shapeHash = computeAnalysisHash(query);
-        var cached = analysisRepository.findByShapeHash(shapeHash);
 
-        if (cached.isPresent()) {
-            log.info("Analysis cache hit for shape hash: {}", shapeHash);
-            return cached.get();
+        if (!force) {
+            var cached = analysisRepository.findByShapeHash(shapeHash);
+            if (cached.isPresent()) {
+                log.info("Analysis cache hit for shape hash: {}", shapeHash);
+                return cached.get();
+            }
+        } else {
+            log.info("Force re-analysis for shape hash: {}, deleting cached", shapeHash);
+            analysisRepository.deleteByShapeHash(shapeHash);
         }
 
-        log.info("Analysis cache miss for shape hash: {}, calling Claude", shapeHash);
-        var analysisText = claudeClient.analyzeSlowQuery(query);
+        log.info("Calling Claude for shape hash: {}", shapeHash);
+        var result = claudeClient.analyzeSlowQuery(query);
         var normalizedFilter = queryShapeNormalizer.extractShape(query.shape().filter());
 
         analysisRepository.save(
@@ -43,14 +48,18 @@ public class SlowQueryAnalysisService {
             query.namespace(),
             query.shape().planSummary(),
             normalizedFilter,
-            analysisText
+            result.analysis(),
+            result.databaseAnalysis(),
+            result.codeAnalyses()
         );
 
         return new SlowQueryAnalysis(
             shapeHash,
             query.namespace(),
             query.shape().planSummary(),
-            analysisText,
+            result.analysis(),
+            result.databaseAnalysis(),
+            result.codeAnalyses(),
             Instant.now(),
             false
         );

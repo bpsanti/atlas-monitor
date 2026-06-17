@@ -1,5 +1,6 @@
 package com.atlasmonitor.api;
 
+import com.atlasmonitor.api.resource.CodeAnalysisResource;
 import com.atlasmonitor.api.resource.QueryShapeStatsResource;
 import com.atlasmonitor.api.resource.SlowQueryAnalysisResource;
 import com.atlasmonitor.api.resource.SlowQueryResource;
@@ -61,17 +62,32 @@ public class SlowQueryController {
     public ResponseEntity<SlowQueryAnalysisResource> findAnalysis(@RequestBody SlowQueryResource queryResource) {
         SlowQuery query = conversionService.convert(queryResource, SlowQuery.class);
         return analysisService.findAnalysis(query)
-            .map(result -> ResponseEntity.ok(new SlowQueryAnalysisResource(
-                result.analysis(), result.planSummary(), result.analyzedAt(), result.cached())))
+            .map(result -> ResponseEntity.ok(toResource(result)))
             .orElse(ResponseEntity.noContent().build());
     }
 
     @PostMapping("/slow-queries/analyze")
-    public SlowQueryAnalysisResource analyzeSlowQuery(@RequestBody SlowQueryResource queryResource) {
+    public SlowQueryAnalysisResource analyzeSlowQuery(
+        @RequestBody SlowQueryResource queryResource,
+        @RequestParam(defaultValue = "false") boolean force
+    ) {
         SlowQuery query = conversionService.convert(queryResource, SlowQuery.class);
-        SlowQueryAnalysis result = analysisService.analyze(query);
+        SlowQueryAnalysis result = analysisService.analyze(query, force);
+        return toResource(result);
+    }
+
+    private SlowQueryAnalysisResource toResource(SlowQueryAnalysis result) {
+        var codeAnalyses = result.codeAnalyses() != null
+            ? result.codeAnalyses().stream()
+                .map(c -> new CodeAnalysisResource(
+                    c.filePath(), c.repositoryName(), c.htmlUrl(), c.lineNumber(), c.analysis()))
+                .toList()
+            : List.<CodeAnalysisResource>of();
+
         return new SlowQueryAnalysisResource(
             result.analysis(),
+            result.databaseAnalysis(),
+            codeAnalyses,
             result.planSummary(),
             result.analyzedAt(),
             result.cached()

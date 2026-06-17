@@ -39,7 +39,9 @@ export class SlowQueryService {
     );
   }
 
-  analyzeQuery(query: SlowQueryResponse): Observable<SlowQueryAnalysisResponse> {
-    return this.http.post<SlowQueryAnalysisResponse>('/api/v1/slow-queries/analyze', query);
+  analyzeQuery(query: SlowQueryResponse, force = false): Observable<SlowQueryAnalysisResponse> {
+    let params = new HttpParams();
+    if (force) params = params.set('force', true);
+    return this.http.post<SlowQueryAnalysisResponse>('/api/v1/slow-queries/analyze', query, { params });
   }
 }

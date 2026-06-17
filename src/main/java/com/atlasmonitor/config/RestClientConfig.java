@@ -14,6 +14,16 @@ import org.springframework.web.client.RestClient;
 public class RestClientConfig {
 
     @Bean
+    public RestClient githubRestClient(GitHubProperties props) {
+        return RestClient.builder()
+            .baseUrl("https://api.github.com")
+            .defaultHeader("Authorization", "Bearer " + props.token())
+            .defaultHeader("Accept", "application/vnd.github.text-match+json")
+            .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
+            .build();
+    }
+
+    @Bean
     public RestClient atlasRestClient(AtlasApiProperties props) {
         BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(

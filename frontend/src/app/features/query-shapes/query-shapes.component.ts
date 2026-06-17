@@ -29,7 +29,7 @@ export class QueryShapesComponent implements OnInit {
   activeTab: 'details' | 'analysis' = 'details';
   sampleQuery: SlowQueryResponse | null = null;
   loadingSample = false;
-  analysisHtml: string | null = null;
+  databaseAnalysisHtml: string | null = null;
   analysisMetadata: SlowQueryAnalysisResponse | null = null;
   analyzing = false;
   loadingAnalysis = false;
@@ -97,7 +97,7 @@ export class QueryShapesComponent implements OnInit {
     this.activeTab = 'details';
     this.sampleQuery = null;
     this.loadingSample = true;
-    this.analysisHtml = null;
+    this.databaseAnalysisHtml = null;
     this.analysisMetadata = null;
     this.analyzing = false;
     this.loadingAnalysis = true;
@@ -129,7 +129,9 @@ export class QueryShapesComponent implements OnInit {
       next: (res) => {
         if (res) {
           this.analysisMetadata = res;
-          this.analysisHtml = marked.parse(res.analysis) as string;
+          this.databaseAnalysisHtml = res.databaseAnalysis
+            ? marked.parse(res.databaseAnalysis) as string
+            : null;
         }
         this.loadingAnalysis = false;
         this.cdr.markForCheck();
@@ -144,7 +146,7 @@ export class QueryShapesComponent implements OnInit {
   closePanel(): void {
     this.selectedShape = null;
     this.sampleQuery = null;
-    this.analysisHtml = null;
+    this.databaseAnalysisHtml = null;
     this.analysisMetadata = null;
     this.analyzing = false;
     this.loadingAnalysis = false;
@@ -154,21 +156,27 @@ export class QueryShapesComponent implements OnInit {
   analyzeQuery(): void {
     if (!this.sampleQuery || this.analyzing) return;
     this.analyzing = true;
-    this.analysisHtml = null;
+    this.databaseAnalysisHtml = null;
     this.analysisMetadata = null;
-    this.slowQueryService.analyzeQuery(this.sampleQuery).subscribe({
+    this.slowQueryService.analyzeQuery(this.sampleQuery, true).subscribe({
       next: (res) => {
         this.analysisMetadata = res;
-        this.analysisHtml = marked.parse(res.analysis) as string;
+        this.databaseAnalysisHtml = res.databaseAnalysis
+          ? marked.parse(res.databaseAnalysis) as string
+          : null;
         this.analyzing = false;
         this.cdr.markForCheck();
       },
       error: () => {
-        this.analysisHtml = '<p>Failed to analyze query.</p>';
+        this.databaseAnalysisHtml = '<p>Failed to analyze query.</p>';
         this.analyzing = false;
         this.cdr.markForCheck();
       },
     });
+  }
+
+  renderMarkdown(text: string): string {
+    return marked.parse(text) as string;
   }
 
   formatDuration(ms: number): string {

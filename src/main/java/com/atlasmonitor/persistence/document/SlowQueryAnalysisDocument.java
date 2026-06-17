@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -25,5 +26,18 @@ public class SlowQueryAnalysisDocument {
     private String planSummary;
     private String normalizedFilter;
     private String analysis;
+    private String databaseAnalysis;
+    private List<CodeAnalysisEntry> codeAnalyses;
     private Instant analyzedAt;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CodeAnalysisEntry {
+        private String filePath;
+        private String repositoryName;
+        private String htmlUrl;
+        private Integer lineNumber;
+        private String analysis;
+    }
 }

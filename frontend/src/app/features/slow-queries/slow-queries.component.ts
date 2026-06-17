@@ -45,7 +45,7 @@ export class SlowQueriesComponent implements OnInit {
   sortDirection: 'asc' | 'desc' = 'desc';
   selectedQuery: SlowQueryResponse | null = null;
   activeTab: 'details' | 'analysis' = 'details';
-  analysisHtml: string | null = null;
+  databaseAnalysisHtml: string | null = null;
   analysisMetadata: SlowQueryAnalysisResponse | null = null;
   analyzing = false;
   loadingAnalysis = false;
@@ -195,7 +195,7 @@ export class SlowQueriesComponent implements OnInit {
   selectQuery(query: SlowQueryResponse): void {
     this.selectedQuery = query;
     this.activeTab = 'details';
-    this.analysisHtml = null;
+    this.databaseAnalysisHtml = null;
     this.analysisMetadata = null;
     this.analyzing = false;
     this.loadingAnalysis = true;
@@ -205,7 +205,9 @@ export class SlowQueriesComponent implements OnInit {
       next: (res) => {
         if (res) {
           this.analysisMetadata = res;
-          this.analysisHtml = marked.parse(res.analysis) as string;
+          this.databaseAnalysisHtml = res.databaseAnalysis
+            ? marked.parse(res.databaseAnalysis) as string
+            : null;
         }
         this.loadingAnalysis = false;
         this.cdr.markForCheck();
@@ -220,7 +222,7 @@ export class SlowQueriesComponent implements OnInit {
   closePanel(): void {
     this.selectedQuery = null;
     this.activeTab = 'details';
-    this.analysisHtml = null;
+    this.databaseAnalysisHtml = null;
     this.analysisMetadata = null;
     this.analyzing = false;
     this.loadingAnalysis = false;
@@ -230,21 +232,27 @@ export class SlowQueriesComponent implements OnInit {
   analyzeQuery(): void {
     if (!this.selectedQuery || this.analyzing) return;
     this.analyzing = true;
-    this.analysisHtml = null;
+    this.databaseAnalysisHtml = null;
     this.analysisMetadata = null;
-    this.slowQueryService.analyzeQuery(this.selectedQuery).subscribe({
+    this.slowQueryService.analyzeQuery(this.selectedQuery, true).subscribe({
       next: (res) => {
         this.analysisMetadata = res;
-        this.analysisHtml = marked.parse(res.analysis) as string;
+        this.databaseAnalysisHtml = res.databaseAnalysis
+          ? marked.parse(res.databaseAnalysis) as string
+          : null;
         this.analyzing = false;
         this.cdr.markForCheck();
       },
       error: () => {
-        this.analysisHtml = '<p>Failed to analyze query.</p>';
+        this.databaseAnalysisHtml = '<p>Failed to analyze query.</p>';
         this.analyzing = false;
         this.cdr.markForCheck();
       },
     });
+  }
+
+  renderMarkdown(text: string): string {
+    return marked.parse(text) as string;
   }
 
   toggleSort(column: 'occurredAt' | 'durationMillis'): void {

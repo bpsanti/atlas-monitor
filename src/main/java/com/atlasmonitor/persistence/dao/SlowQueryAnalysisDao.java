@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface SlowQueryAnalysisDao extends MongoRepository<SlowQueryAnalysisDocument, String> {
 
     Optional<SlowQueryAnalysisDocument> findByShapeHash(String shapeHash);
+
+    void deleteByShapeHash(String shapeHash);
 }

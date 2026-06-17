@@ -178,7 +178,7 @@
         @if (loadingAnalysis) {
           <div class="analysis-loading">Loading analysis…</div>
         }
-        @if (!loadingAnalysis && !analysisHtml && !analyzing) {
+        @if (!loadingAnalysis && !databaseAnalysisHtml && !analyzing) {
           <div class="analysis-empty">
             <p>No analysis available for this query shape.</p>
             <button class="analyze-btn" (click)="analyzeQuery()" [disabled]="analyzing">
@@ -189,14 +189,35 @@
         @if (analyzing) {
           <div class="analysis-loading">Analyzing with AI…</div>
         }
-        @if (analysisHtml) {
+        @if (databaseAnalysisHtml) {
           <div class="analysis-result">
             @if (analysisMetadata) {
               <div class="analysis-meta">
                 {{ analysisMetadata.planSummary ?? 'Unknown plan' }} — analyzed on {{ formatDate(analysisMetadata.analyzedAt) }}
               </div>
             }
-            <div class="analysis-block" [innerHTML]="analysisHtml"></div>
+
+            <h4 class="analysis-section-title">Database Analysis</h4>
+            <div class="analysis-block" [innerHTML]="databaseAnalysisHtml"></div>
+
+            @if (analysisMetadata?.codeAnalyses?.length) {
+              <h4 class="analysis-section-title">Code Analysis</h4>
+              @for (code of analysisMetadata!.codeAnalyses; track code.filePath) {
+                <div class="code-analysis-entry">
+                  <div class="code-analysis-header">
+                    <a [href]="code.htmlUrl" target="_blank" rel="noopener" class="code-file-link">
+                      {{ code.filePath }}
+                    </a>
+                    @if (code.lineNumber) {
+                      <span class="code-line-number">Line {{ code.lineNumber }}</span>
+                    }
+                    <span class="code-repo-name">{{ code.repositoryName }}</span>
+                  </div>
+                  <div class="code-analysis-body" [innerHTML]="renderMarkdown(code.analysis)"></div>
+                </div>
+              }
+            }
+
             <button class="analyze-btn reanalyze-btn" (click)="analyzeQuery()" [disabled]="analyzing">
               {{ analyzing ? 'Analyzing…' : 'Re-analyze' }}
             </button>
