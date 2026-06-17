@@ -61,7 +61,7 @@ public class IopsMetricsRepository {
         if (series == null) return null;
 
         var filtered = series.dataPoints().stream()
-            .filter(dp -> dp.timestamp() != null
+            .filter(dp -> dp.timestamp() != null && dp.value() != null
                 && !dp.timestamp().isBefore(start)
                 && !dp.timestamp().isAfter(end))
             .toList();
